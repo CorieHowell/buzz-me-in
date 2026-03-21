@@ -3,10 +3,10 @@
   import { goto } from '$app/navigation'
   import logo from '$lib/assets/BuzzLogo.png'
 
-  let email = ''
-  let password = ''
-  let loading = false
-  let error = ''
+  let email = $state('')
+  let password = $state('')
+  let loading = $state(false)
+  let error = $state('')
 
   async function handleLogin() {
     if (!email.trim()) { error = 'Please enter your email.'; return }
