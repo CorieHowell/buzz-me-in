@@ -67,7 +67,7 @@
     {
       icon: '🧠',
       title: 'Group Memory',
-      desc: "Every event, bring list, and recap. Automatically archived. Your group's story, always findable."
+      desc: "Every event, bring list, and recap — automatically saved. No screenshots, no searching back through texts."
     },
     {
       icon: '🔒',
@@ -208,9 +208,9 @@
       </div>
 
       <h1 class="text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-6">
-        Your group,<br />
-        <span style="color: var(--color-accent);">finally</span><br />
-        organized.
+        Your group deserves<br />
+        <span style="color: var(--color-accent);">better</span> than<br />
+        a group text.
       </h1>
 
       <p class="text-lg leading-relaxed mb-10" style="color: rgba(255,255,255,0.68);">
@@ -304,41 +304,9 @@
 
     <div class="text-center mt-14">
       <p class="text-xl font-semibold" style="color: var(--color-primary);">
-        There's a better way.
-        <span style="color: var(--color-accent-soft);">Your group deserves its own space.</span>
-      </p>
-    </div>
-  </div>
-</section>
-
-<!-- ── FEATURES ── -->
-<section class="py-24" style="background: var(--color-surface-purple);">
-  <div class="max-w-6xl mx-auto px-6">
-    <div class="text-center mb-16">
-      <h2 class="text-4xl font-extrabold mb-4" style="color: var(--color-header);">
-        Everything your group needs.<br />
-        <span style="color: var(--color-secondary);">Nothing you don't.</span>
-      </h2>
-      <p class="text-lg max-w-2xl mx-auto" style="color: var(--color-muted-foreground);">
-        Built for small groups with real rhythm, the ones that actually show up.
-      </p>
-    </div>
-
-    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {#each features as feature}
-        <div
-          class="p-7 rounded-2xl bg-white"
-        >
-          <div
-            class="rounded-xl flex items-center justify-center text-2xl mb-5"
-            style="background: var(--color-surface-amber); width: 3.25rem; height: 3.25rem;"
-          >
-            {feature.icon}
-          </div>
-          <h3 class="font-bold text-lg mb-2" style="color: var(--color-header);">{feature.title}</h3>
-          <p class="text-sm leading-relaxed" style="color: var(--color-muted-foreground);">{feature.desc}</p>
-        </div>
-      {/each}
+          Your group text has had enough.
+          <span style="color: var(--color-accent-soft);">So have you.</span>
+        </p>
     </div>
   </div>
 </section>
@@ -368,6 +336,38 @@
             <div class="hidden md:block h-px w-8" style="background: var(--color-primary); opacity: 0.25;"></div>
           </div>
         {/if}
+      {/each}
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ── -->
+<section class="py-24" style="background: var(--color-surface-purple);">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-16">
+      <h2 class="text-4xl font-extrabold mb-4" style="color: var(--color-header);">
+        Everything your group needs.<br />
+        <span style="color: var(--color-secondary);">Nothing you don't.</span>
+      </h2>
+      <p class="text-lg max-w-2xl mx-auto" style="color: var(--color-muted-foreground);">
+        No bloat, no noise. Just the tools your group actually uses.
+      </p>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {#each features as feature}
+        <div
+          class="p-7 rounded-2xl bg-white"
+        >
+          <div
+            class="rounded-xl flex items-center justify-center text-2xl mb-5"
+            style="background: var(--color-surface-amber); width: 3.25rem; height: 3.25rem;"
+          >
+            {feature.icon}
+          </div>
+          <h3 class="font-bold text-lg mb-2" style="color: var(--color-header);">{feature.title}</h3>
+          <p class="text-sm leading-relaxed" style="color: var(--color-muted-foreground);">{feature.desc}</p>
+        </div>
       {/each}
     </div>
   </div>
@@ -428,7 +428,7 @@
     <div class="grid md:grid-cols-2 gap-8 items-start">
       <!-- Free tier -->
       <div class="p-8 rounded-3xl bg-white">
-        <p class="text-sm font-bold uppercase tracking-wider mb-3" style="color: var(--color-secondary);">Free Forever</p>
+        <p class="text-sm font-bold uppercase tracking-wider mb-3" style="color: var(--color-secondary);">Buzz Free</p>
         <div class="flex items-end gap-1 mb-1">
           <span class="text-5xl font-black" style="color: var(--color-header);">$0</span>
         </div>
@@ -503,11 +503,11 @@
   <div class="max-w-2xl mx-auto px-6 text-center relative z-10">
     <div class="text-5xl mb-6">🔔</div>
     <h2 class="text-4xl font-extrabold text-white mb-5">
-      Be first in line.
+      Your group is out there.<br />Let's get you set up.
     </h2>
     <p class="text-lg mb-10" style="color: rgba(255,255,255,0.65);">
       Buzz Me In is launching soon. Drop your email and we'll buzz you the moment
-      it's ready, plus early adopter pricing, just for being early.
+      it's ready — plus early adopter pricing, just for being early.
     </p>
 
     {#if submitted}
