@@ -1,0 +1,161 @@
+
+<style>
+#erd2 svg { width: 100%; }
+#erd2 svg.erDiagram .divider path { stroke-opacity: 0.5; }
+#erd2 svg.erDiagram .row-rect-odd path,
+#erd2 svg.erDiagram .row-rect-odd rect,
+#erd2 svg.erDiagram .row-rect-even path,
+#erd2 svg.erDiagram .row-rect-even rect { stroke: none !important; }
+</style>
+<div id="erd2" style="padding: 0.5rem 0"></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+await document.fonts.ready;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"Anthropic Sans", sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '13px',
+    fontFamily: '"Anthropic Sans", sans-serif',
+    lineColor: dark ? '#9c9a92' : '#73726c',
+    textColor: dark ? '#c2c0b6' : '#3d3d3a',
+  },
+});
+const diagram = `erDiagram
+  posts {
+    uuid id PK
+    uuid group_id FK
+    uuid author_id FK
+    uuid parent_id FK
+    string body
+    boolean is_announcement
+    boolean is_deleted
+    boolean is_edited
+    timestamp edited_at
+    timestamp created_at
+  }
+  post_reactions {
+    uuid id PK
+    uuid post_id FK
+    uuid user_id FK
+    string emoji
+    timestamp created_at
+  }
+  direct_messages {
+    uuid id PK
+    uuid sender_id FK
+    uuid recipient_id FK
+    string body
+    boolean is_anonymous
+    boolean is_deleted
+    boolean is_edited
+    boolean is_read
+    timestamp created_at
+  }
+  bring_list_items {
+    uuid id PK
+    uuid event_id FK
+    string name
+    string note
+    uuid added_by FK
+    integer quantity
+    boolean is_locked
+    timestamp created_at
+  }
+  bring_list_claims {
+    uuid id PK
+    uuid item_id FK
+    uuid user_id FK
+    timestamp claimed_at
+  }
+  group_lists {
+    uuid id PK
+    uuid group_id FK
+    string name
+    timestamp created_at
+  }
+  list_items {
+    uuid id PK
+    uuid list_id FK
+    uuid added_by FK
+    uuid linked_event_id FK
+    string title
+    string note
+    integer upvotes
+    boolean is_done
+    timestamp created_at
+  }
+  polls {
+    uuid id PK
+    uuid group_id FK
+    uuid event_id FK
+    uuid created_by FK
+    string question
+    timestamp closes_at
+    timestamp created_at
+  }
+  poll_options {
+    uuid id PK
+    uuid poll_id FK
+    string label
+  }
+  poll_votes {
+    uuid id PK
+    uuid poll_option_id FK
+    uuid user_id FK
+    timestamp voted_at
+  }
+  event_memory {
+    uuid id PK
+    uuid event_id FK
+    string recap_text
+    timestamp recap_written_at
+    boolean nudge_sent
+  }
+  guest_passes {
+    uuid id PK
+    uuid event_id FK
+    string token
+    string qr_url
+    string guest_name
+    string guest_email
+    string rsvp_status
+    timestamp expires_at
+    timestamp created_at
+  }
+  posts ||--o{ post_reactions : "receives"
+  posts ||--o{ posts : "replies to"
+  bring_list_items ||--o{ bring_list_claims : "claimed via"
+  group_lists ||--o{ list_items : "contains"
+  polls ||--o{ poll_options : "has"
+  poll_options ||--o{ poll_votes : "receives"
+  polls ||--o| poll_options : "attached to"
+`;
+const { svg } = await mermaid.render('erd2-svg', diagram);
+document.getElementById('erd2').innerHTML = svg;
+document.querySelectorAll('#erd2 svg.erDiagram .node').forEach(node => {
+  const firstPath = node.querySelector('path[d]');
+  if (!firstPath) return;
+  const d = firstPath.getAttribute('d');
+  const nums = d.match(/-?[\d.]+/g)?.map(Number);
+  if (!nums || nums.length < 8) return;
+  const xs = [nums[0], nums[2], nums[4], nums[6]];
+  const ys = [nums[1], nums[3], nums[5], nums[7]];
+  const x = Math.min(...xs), y = Math.min(...ys);
+  const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', x); rect.setAttribute('y', y);
+  rect.setAttribute('width', w); rect.setAttribute('height', h);
+  rect.setAttribute('rx', '8');
+  for (const a of ['fill', 'stroke', 'stroke-width', 'class', 'style']) {
+    if (firstPath.hasAttribute(a)) rect.setAttribute(a, firstPath.getAttribute(a));
+  }
+  firstPath.replaceWith(rect);
+});
+document.querySelectorAll('#erd2 svg.erDiagram .row-rect-odd path, #erd2 svg.erDiagram .row-rect-even path').forEach(p => {
+  p.setAttribute('stroke', 'none');
+});
+</script>

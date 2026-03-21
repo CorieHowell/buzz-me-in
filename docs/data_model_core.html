@@ -1,0 +1,124 @@
+
+<style>
+#erd1 svg { width: 100%; }
+#erd1 svg.erDiagram .divider path { stroke-opacity: 0.5; }
+#erd1 svg.erDiagram .row-rect-odd path,
+#erd1 svg.erDiagram .row-rect-odd rect,
+#erd1 svg.erDiagram .row-rect-even path,
+#erd1 svg.erDiagram .row-rect-even rect { stroke: none !important; }
+</style>
+<div id="erd1" style="padding: 0.5rem 0"></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+await document.fonts.ready;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"Anthropic Sans", sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '13px',
+    fontFamily: '"Anthropic Sans", sans-serif',
+    lineColor: dark ? '#9c9a92' : '#73726c',
+    textColor: dark ? '#c2c0b6' : '#3d3d3a',
+  },
+});
+const diagram = `erDiagram
+  users {
+    uuid id PK
+    string email
+    string display_name
+    string avatar_url
+    string city
+    string state
+    string bio
+    string instagram_handle
+    string twitter_handle
+    string website_url
+    boolean hide_groups
+    string plan
+    timestamp created_at
+  }
+  groups {
+    uuid id PK
+    string name
+    string description
+    string invite_token
+    string invite_qr_url
+    string approval_mode
+    boolean is_archived
+    timestamp created_at
+  }
+  group_members {
+    uuid id PK
+    uuid group_id FK
+    uuid user_id FK
+    string role
+    timestamp joined_at
+    boolean on_hiatus
+    date hiatus_until
+  }
+  events {
+    uuid id PK
+    uuid group_id FK
+    uuid host_user_id FK
+    uuid series_id FK
+    string title
+    string description
+    string location
+    string status
+    timestamp event_date
+    timestamp created_at
+  }
+  event_series {
+    uuid id PK
+    uuid group_id FK
+    string cadence
+    integer interval_days
+    integer max_future_events
+    boolean is_active
+    timestamp created_at
+  }
+  join_requests {
+    uuid id PK
+    uuid group_id FK
+    uuid user_id FK
+    string status
+    timestamp requested_at
+    timestamp actioned_at
+  }
+  users ||--o{ group_members : "belongs to"
+  groups ||--o{ group_members : "has"
+  groups ||--o{ events : "hosts"
+  groups ||--o{ event_series : "has"
+  groups ||--o{ join_requests : "receives"
+  users ||--o{ join_requests : "submits"
+  event_series ||--o{ events : "generates"
+  users ||--o{ events : "hosts"
+`;
+const { svg } = await mermaid.render('erd1-svg', diagram);
+document.getElementById('erd1').innerHTML = svg;
+document.querySelectorAll('#erd1 svg.erDiagram .node').forEach(node => {
+  const firstPath = node.querySelector('path[d]');
+  if (!firstPath) return;
+  const d = firstPath.getAttribute('d');
+  const nums = d.match(/-?[\d.]+/g)?.map(Number);
+  if (!nums || nums.length < 8) return;
+  const xs = [nums[0], nums[2], nums[4], nums[6]];
+  const ys = [nums[1], nums[3], nums[5], nums[7]];
+  const x = Math.min(...xs), y = Math.min(...ys);
+  const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', x); rect.setAttribute('y', y);
+  rect.setAttribute('width', w); rect.setAttribute('height', h);
+  rect.setAttribute('rx', '8');
+  for (const a of ['fill', 'stroke', 'stroke-width', 'class', 'style']) {
+    if (firstPath.hasAttribute(a)) rect.setAttribute(a, firstPath.getAttribute(a));
+  }
+  firstPath.replaceWith(rect);
+});
+document.querySelectorAll('#erd1 svg.erDiagram .row-rect-odd path, #erd1 svg.erDiagram .row-rect-even path').forEach(p => {
+  p.setAttribute('stroke', 'none');
+});
+</script>

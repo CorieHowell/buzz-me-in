@@ -1,0 +1,122 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/figtree";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Figtree Variable", ui-sans-serif, system-ui, sans-serif;
+
+  /* ── Brand colors from Buzz Me In palette ── */
+
+  /* Header: deep violet */
+  --color-header: hsl(267.7 52.54% 14.53%);
+
+  /* Primary: deep indigo-purple */
+  --color-primary: hsl(234 26% 41%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-primary-dark: hsl(234 26% 33%);
+
+  /* Secondary: medium purple-blue */
+  --color-secondary: hsl(235 22% 56%);
+  --color-secondary-foreground: hsl(0 0% 100%);
+
+  /* Accent: warm amber/gold */
+  --color-accent: hsl(35 100% 72%);
+  --color-accent-foreground: hsl(234 26% 20%);
+
+  /* Accent soft: coral pink */
+  --color-accent-soft: hsl(355 68% 73%);
+  --color-accent-soft-foreground: hsl(234 26% 20%);
+
+  /* ── App shell ── */
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(234 20% 18%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(234 20% 18%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(234 20% 18%);
+  --color-muted: hsl(234 20% 96%);
+  --color-muted-foreground: hsl(234 12% 52%);
+  --color-destructive: hsl(0 72% 51%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --color-border: hsl(234 20% 88%);
+  --color-input: hsl(234 20% 88%);
+  --color-ring: hsl(234 26% 41%);
+
+  /* ── Surface tints ── */
+  --color-surface-purple: hsl(234 40% 97%);
+  --color-surface-amber: hsl(35 100% 97%);
+
+  /* ── Radius ── */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@custom-variant data-open {
+  &:where([data-state="open"]), &:where([data-open]:not([data-open="false"])) {
+    @slot;
+  }
+}
+@custom-variant data-closed {
+  &:where([data-state="closed"]), &:where([data-closed]:not([data-closed="false"])) {
+    @slot;
+  }
+}
+@custom-variant data-checked {
+  &:where([data-state="checked"]), &:where([data-checked]:not([data-checked="false"])) {
+    @slot;
+  }
+}
+@custom-variant data-unchecked {
+  &:where([data-state="unchecked"]), &:where([data-unchecked]:not([data-unchecked="false"])) {
+    @slot;
+  }
+}
+@custom-variant data-selected {
+  &:where([data-selected]) {
+    @slot;
+  }
+}
+@custom-variant data-disabled {
+  &:where([data-disabled="true"]), &:where([data-disabled]:not([data-disabled="false"])) {
+    @slot;
+  }
+}
+@custom-variant data-active {
+  &:where([data-state="active"]), &:where([data-active]:not([data-active="false"])) {
+    @slot;
+  }
+}
+@custom-variant data-horizontal {
+  &:where([data-orientation="horizontal"]) {
+    @slot;
+  }
+}
+@custom-variant data-vertical {
+  &:where([data-orientation="vertical"]) {
+    @slot;
+  }
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
