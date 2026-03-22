@@ -311,36 +311,6 @@
   </div>
 </section>
 
-<!-- ── HOW IT WORKS ── -->
-<section class="bg-white">
-  <div class="max-w-5xl mx-auto px-6 py-24 text-center">
-    <div class="mb-16">
-      <h2 class="text-4xl font-extrabold mb-4" style="color: var(--color-header);">
-        Up and running in minutes.
-      </h2>
-      <p class="text-lg" style="color: var(--color-muted-foreground);">
-        Your group could be set up before your next meeting.
-      </p>
-    </div>
-
-    <div class="flex flex-col md:flex-row items-center md:items-start justify-center gap-0 w-full max-w-3xl mx-auto">
-      {#each steps as step, i}
-        <div class="flex-1 text-center px-4">
-          <h3 class="font-extrabold text-xl mb-2 whitespace-nowrap" style="color: var(--color-primary);">{step.title}</h3>
-          <p class="text-sm leading-relaxed" style="color: var(--color-muted-foreground);">{step.desc}</p>
-        </div>
-        {#if i < steps.length - 1}
-          <!-- horizontal line on md+, vertical line on mobile -->
-          <div class="flex-shrink-0 flex items-center justify-center md:self-start md:mt-3">
-            <div class="md:hidden w-px h-8 my-6" style="background: var(--color-primary); opacity: 0.25;"></div>
-            <div class="hidden md:block h-px w-8" style="background: var(--color-primary); opacity: 0.25;"></div>
-          </div>
-        {/if}
-      {/each}
-    </div>
-  </div>
-</section>
-
 <!-- ── FEATURES ── -->
 <section class="py-24" style="background: var(--color-surface-purple);">
   <div class="max-w-6xl mx-auto px-6">
@@ -368,6 +338,36 @@
           <h3 class="font-bold text-lg mb-2" style="color: var(--color-header);">{feature.title}</h3>
           <p class="text-sm leading-relaxed" style="color: var(--color-muted-foreground);">{feature.desc}</p>
         </div>
+      {/each}
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ── -->
+<section class="bg-white">
+  <div class="max-w-5xl mx-auto px-6 py-24 text-center">
+    <div class="mb-16">
+      <h2 class="text-4xl font-extrabold mb-4" style="color: var(--color-header);">
+        Up and running in minutes.
+      </h2>
+      <p class="text-lg" style="color: var(--color-muted-foreground);">
+        Your group could be set up before your next meeting.
+      </p>
+    </div>
+
+    <div class="flex flex-col md:flex-row items-center md:items-start justify-center gap-0 w-full max-w-3xl mx-auto">
+      {#each steps as step, i}
+        <div class="flex-1 text-center px-4">
+          <h3 class="font-extrabold text-xl mb-2 whitespace-nowrap" style="color: var(--color-primary);">{step.title}</h3>
+          <p class="text-sm leading-relaxed" style="color: var(--color-muted-foreground);">{step.desc}</p>
+        </div>
+        {#if i < steps.length - 1}
+          <!-- horizontal line on md+, vertical line on mobile -->
+          <div class="flex-shrink-0 flex items-center justify-center md:self-start md:mt-3">
+            <div class="md:hidden w-px h-8 my-6" style="background: var(--color-primary); opacity: 0.25;"></div>
+            <div class="hidden md:block h-px w-8" style="background: var(--color-primary); opacity: 0.25;"></div>
+          </div>
+        {/if}
       {/each}
     </div>
   </div>
