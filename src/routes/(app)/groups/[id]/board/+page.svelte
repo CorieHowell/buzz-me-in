@@ -17,8 +17,58 @@
   let replyBodies = $state({})
   let replyingTo = $state(null)
   let submittingReply = $state(false)
+  let emojiPickerPostId = $state(null)
+
+  const EMOJI_OPTIONS = ['❤️', '👍', '😂', '😮', '🙌', '🔥']
+
+  const DEV_MOCK = true
 
   onMount(async () => {
+    if (DEV_MOCK) {
+      currentUserId = 'mock-user-id'
+      currentUserRole = 'admin'
+      adminUserId = 'mock-user-id'
+      posts = [
+        {
+          id: 'post1', body: "Just finished the last chapter — so good! Can't wait to discuss on Thursday. Anyone bringing snacks?",
+          created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+          is_edited: false, is_deleted: false, is_announcement: true,
+          author_id: 'u1',
+          users: { display_name: 'Sarah M.', avatar_url: null },
+          reactions: [{ emoji: '❤️', count: 4 }, { emoji: '🙌', count: 2 }],
+          myReaction: '❤️',
+          replies: [
+            { id: 'r1', body: "Me too! I'll bring chips 🍟", created_at: new Date(Date.now() - 20 * 60 * 1000).toISOString(), is_edited: false, is_deleted: false, author_id: 'u3', users: { display_name: 'James T.', avatar_url: null } },
+            { id: 'r2', body: "Can't wait to discuss the ending!", created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(), is_edited: false, is_deleted: false, author_id: 'u5', users: { display_name: 'Priya K.', avatar_url: null } },
+          ],
+        },
+        {
+          id: 'post2', body: 'Thinking Italian for next month — anyone have a good spot in Silver Lake? Open to suggestions!',
+          created_at: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
+          is_edited: false, is_deleted: false, is_announcement: false,
+          author_id: 'u5',
+          users: { display_name: 'Priya K.', avatar_url: null },
+          reactions: [],
+          myReaction: null,
+          replies: [],
+        },
+        {
+          id: 'post3', body: "I'm bringing my famous lemon bars 🍋",
+          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          is_edited: false, is_deleted: false, is_announcement: false,
+          author_id: 'mock-user-id',
+          users: { display_name: 'Corie H.', avatar_url: null },
+          reactions: [{ emoji: '😂', count: 3 }, { emoji: '❤️', count: 1 }],
+          myReaction: null,
+          replies: [
+            { id: 'r3', body: 'Yes!! Obsessed with your lemon bars 😍', created_at: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString(), is_edited: false, is_deleted: false, author_id: 'u1', users: { display_name: 'Sarah M.', avatar_url: null } },
+          ],
+        },
+      ]
+      loading = false
+      return
+    }
+
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { goto('/auth/login'); return }
     currentUserId = user.id
@@ -46,6 +96,7 @@
   })
 
   async function loadPosts() {
+    if (DEV_MOCK) return
     loading = true
     const { data } = await supabase
       .from('posts')
@@ -53,6 +104,7 @@
         id, body, created_at, is_edited, is_deleted, is_announcement,
         author_id,
         users(display_name, avatar_url),
+        post_reactions(emoji, user_id),
         replies:posts!parent_id(
           id, body, created_at, is_edited, is_deleted,
           author_id,
@@ -64,7 +116,17 @@
       .eq('is_deleted', false)
       .order('created_at', { ascending: false })
 
-    posts = data ?? []
+    posts = (data ?? []).map(p => {
+      const reactionMap = {}
+      for (const r of p.post_reactions ?? []) {
+        reactionMap[r.emoji] = (reactionMap[r.emoji] ?? 0) + 1
+      }
+      return {
+        ...p,
+        reactions: Object.entries(reactionMap).map(([emoji, count]) => ({ emoji, count })),
+        myReaction: (p.post_reactions ?? []).find(r => r.user_id === currentUserId)?.emoji ?? null,
+      }
+    })
     loading = false
   }
 
@@ -124,6 +186,45 @@
       .update({ is_announcement: !currentlyPinned })
       .eq('id', postId)
     await loadPosts()
+  }
+
+  async function toggleReaction(postId, emoji) {
+    emojiPickerPostId = null
+    const post = posts.find(p => p.id === postId)
+    if (!post) return
+    const prevMyReaction = post.myReaction
+
+    // Optimistic update
+    posts = posts.map(p => {
+      if (p.id !== postId) return p
+      let reactions = [...(p.reactions ?? [])]
+      let myReaction = p.myReaction
+      if (myReaction) {
+        reactions = reactions.map(r => r.emoji === myReaction ? { ...r, count: r.count - 1 } : r).filter(r => r.count > 0)
+      }
+      if (myReaction !== emoji) {
+        const existing = reactions.find(r => r.emoji === emoji)
+        reactions = existing
+          ? reactions.map(r => r.emoji === emoji ? { ...r, count: r.count + 1 } : r)
+          : [...reactions, { emoji, count: 1 }]
+        myReaction = emoji
+      } else {
+        myReaction = null
+      }
+      return { ...p, reactions, myReaction }
+    })
+
+    if (!DEV_MOCK) {
+      if (prevMyReaction) {
+        await supabase.from('post_reactions').delete().eq('post_id', postId).eq('user_id', currentUserId)
+      }
+      if (prevMyReaction !== emoji) {
+        await supabase.from('post_reactions').upsert(
+          { post_id: postId, user_id: currentUserId, emoji },
+          { onConflict: 'post_id,user_id' }
+        )
+      }
+    }
   }
 
   function toggleReplies(postId) {
@@ -260,25 +361,59 @@
           </div>
 
           <!-- Post body -->
-          <p class="text-sm text-foreground whitespace-pre-wrap mb-3">{post.body}</p>
+          <p class="text-sm text-foreground whitespace-pre-wrap">{post.body}</p>
 
-          <!-- Reply count + toggle -->
-          <div class="flex items-center gap-3">
-            <button
-              onclick={() => replyingTo = replyingTo === post.id ? null : post.id}
-              class="text-xs font-medium transition-colors"
-              style="color: hsl(234 26% 41%)"
-            >
-              Reply
-            </button>
-            {#if visibleReplies.length > 0}
+          <!-- Separator -->
+          <div class="border-t border-border/50 my-3"></div>
+
+          <!-- Reactions + reply bar -->
+          <div class="flex items-center gap-2 flex-wrap">
+            {#each (post.reactions ?? []) as r}
               <button
-                onclick={() => toggleReplies(post.id)}
-                class="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onclick={() => toggleReaction(post.id, r.emoji)}
+                class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
+                style={post.myReaction === r.emoji
+                  ? 'background: hsl(234 40% 94%); color: hsl(234 26% 41%); border: 1px solid hsl(234 26% 80%)'
+                  : 'background: hsl(220 14% 93%); color: hsl(220 9% 40%); border: 1px solid transparent'}
+              >{r.emoji} {r.count}</button>
+            {/each}
+
+            <div class="relative">
+              <button
+                onclick={() => emojiPickerPostId = emojiPickerPostId === post.id ? null : post.id}
+                class="flex items-center justify-center w-7 h-7 rounded-full text-sm hover:bg-muted transition-colors"
+                style="color: hsl(220 9% 55%)"
+              >+</button>
+              {#if emojiPickerPostId === post.id}
+                <button class="fixed inset-0 z-40 cursor-default" onclick={() => emojiPickerPostId = null} tabindex="-1" aria-hidden="true"></button>
+                <div class="absolute left-0 bottom-full mb-1 flex gap-1 bg-white rounded-xl border border-border px-2 py-1.5 z-50" style="box-shadow: 0 4px 16px rgba(0,0,0,0.1)">
+                  {#each EMOJI_OPTIONS as emoji}
+                    <button onclick={() => toggleReaction(post.id, emoji)} class="text-lg hover:scale-125 transition-transform leading-none p-0.5">{emoji}</button>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+
+            <div class="flex items-center gap-3 ml-auto">
+              <button
+                onclick={() => replyingTo = replyingTo === post.id ? null : post.id}
+                class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
+                style="color: hsl(220 9% 55%)"
               >
-                {isExpanded ? 'Hide' : `${visibleReplies.length} ${visibleReplies.length === 1 ? 'reply' : 'replies'}`}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                {visibleReplies.length > 0 ? `${visibleReplies.length} ${visibleReplies.length === 1 ? 'reply' : 'replies'}` : 'Reply'}
               </button>
-            {/if}
+              {#if visibleReplies.length > 0}
+                <button
+                  onclick={() => toggleReplies(post.id)}
+                  class="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {isExpanded ? 'Hide' : 'Show'}
+                </button>
+              {/if}
+            </div>
           </div>
 
           <!-- Replies -->
