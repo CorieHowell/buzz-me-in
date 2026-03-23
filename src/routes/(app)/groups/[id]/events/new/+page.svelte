@@ -18,8 +18,25 @@
   let members = $state([])
   let hostUserId = $state('')
   let currentUserId = $state(null)
+  let coverPhotoUrl = $state(null)
+  let coverPhotoUploading = $state(false)
+  let coverPhotoError = $state('')
+  let coverPhotoInput = $state(null)
+
+  const DEV_MOCK = true
 
   onMount(async () => {
+    if (DEV_MOCK) {
+      currentUserId = 'mock-user-id'
+      hostUserId = 'mock-user-id'
+      members = [
+        { user_id: 'mock-user-id', users: { display_name: 'Corie (You)' } },
+        { user_id: 'u2', users: { display_name: 'Sarah M.' } },
+        { user_id: 'u3', users: { display_name: 'James T.' } },
+      ]
+      return
+    }
+
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { goto('/auth/login'); return }
     currentUserId = user.id
@@ -55,6 +72,34 @@
     candidateDates = candidateDates.filter((_, idx) => idx !== i)
   }
 
+  async function handleCoverPhotoChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) { coverPhotoError = 'Please select an image file.'; return }
+    if (file.size > 10 * 1024 * 1024) { coverPhotoError = 'Image must be under 10MB.'; return }
+
+    coverPhotoError = ''
+    coverPhotoUploading = true
+
+    const ext = file.name.split('.').pop()
+    const path = `${groupId}/${Date.now()}.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('event-covers')
+      .upload(path, file, { upsert: true })
+
+    if (uploadError) { coverPhotoError = uploadError.message; coverPhotoUploading = false; return }
+
+    const { data: { publicUrl } } = supabase.storage.from('event-covers').getPublicUrl(path)
+    coverPhotoUrl = publicUrl
+    coverPhotoUploading = false
+  }
+
+  function removeCoverPhoto() {
+    coverPhotoUrl = null
+    if (coverPhotoInput) coverPhotoInput.value = ''
+  }
+
   async function handleSubmit() {
     if (!title.trim()) { error = 'Please enter an event title.'; return }
 
@@ -88,6 +133,7 @@
         description: description.trim() || null,
         location: location.trim() || null,
         event_date: eventDatetime,
+        cover_photo_url: coverPhotoUrl,
         status,
       })
       .select()
@@ -125,6 +171,50 @@
       <label for="title" class="text-sm font-medium text-foreground">Event name <span class="text-destructive">*</span></label>
       <input id="title" type="text" bind:value={title} placeholder="April Book Club" maxlength="80"
         class="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition" />
+    </div>
+
+    <!-- Cover photo -->
+    <div class="flex flex-col gap-1.5">
+      <label class="text-sm font-medium text-foreground">Cover photo <span class="text-muted-foreground font-normal">(optional)</span></label>
+      <input bind:this={coverPhotoInput} type="file" accept="image/*" class="hidden" onchange={handleCoverPhotoChange} />
+      {#if coverPhotoUrl}
+        <div class="relative rounded-xl overflow-hidden border border-border" style="height: 160px">
+          <img src={coverPhotoUrl} alt="Cover" class="w-full h-full object-cover" />
+          <button
+            type="button"
+            onclick={removeCoverPhoto}
+            class="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
+            title="Remove photo"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      {:else}
+        <button
+          type="button"
+          onclick={() => coverPhotoInput?.click()}
+          disabled={coverPhotoUploading}
+          class="flex flex-col items-center justify-center gap-2 w-full rounded-xl border-2 border-dashed border-border hover:border-muted-foreground/40 transition-colors bg-background disabled:opacity-50"
+          style="height: 120px"
+        >
+          {#if coverPhotoUploading}
+            <div class="w-5 h-5 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin"></div>
+            <span class="text-xs text-muted-foreground">Uploading…</span>
+          {:else}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(234 12% 62%)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            <span class="text-xs text-muted-foreground">Click to add a cover photo</span>
+          {/if}
+        </button>
+      {/if}
+      {#if coverPhotoError}
+        <p class="text-xs text-destructive">{coverPhotoError}</p>
+      {/if}
     </div>
 
     <!-- Description -->
