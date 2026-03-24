@@ -23,20 +23,7 @@
   let coverPhotoError = $state('')
   let coverPhotoInput = $state(null)
 
-  const DEV_MOCK = true
-
   onMount(async () => {
-    if (DEV_MOCK) {
-      currentUserId = 'mock-user-id'
-      hostUserId = 'mock-user-id'
-      members = [
-        { user_id: 'mock-user-id', users: { display_name: 'Corie (You)' } },
-        { user_id: 'u2', users: { display_name: 'Sarah M.' } },
-        { user_id: 'u3', users: { display_name: 'James T.' } },
-      ]
-      return
-    }
-
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { goto('/auth/login'); return }
     currentUserId = user.id
@@ -161,60 +148,56 @@
   }
 </script>
 
-<div class="max-w-lg mx-auto px-4 py-6">
+<div class="max-w-2xl mx-auto px-4 py-6">
   <h2 class="text-lg font-semibold text-foreground mb-6">New event</h2>
 
   <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }} class="flex flex-col gap-5">
+
+    <!-- Cover photo (circle, top) -->
+    <div class="flex flex-col items-center gap-2">
+      <input bind:this={coverPhotoInput} type="file" accept="image/*" class="hidden" onchange={handleCoverPhotoChange} />
+      <div class="relative">
+        {#if coverPhotoUrl}
+          <img src={coverPhotoUrl} alt="Cover" class="w-24 h-24 rounded-full object-cover border-2 border-border" />
+          <button
+            type="button"
+            onclick={removeCoverPhoto}
+            class="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-destructive flex items-center justify-center border-2 border-background"
+            title="Remove photo"
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        {:else}
+          <button
+            type="button"
+            onclick={() => coverPhotoInput?.click()}
+            disabled={coverPhotoUploading}
+            class="w-24 h-24 rounded-full border-2 border-dashed border-border hover:border-muted-foreground/50 bg-muted flex flex-col items-center justify-center gap-1 transition-colors disabled:opacity-50"
+          >
+            {#if coverPhotoUploading}
+              <div class="w-5 h-5 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin"></div>
+            {:else}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(234 12% 62%)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+              </svg>
+            {/if}
+          </button>
+        {/if}
+      </div>
+      {#if coverPhotoError}
+        <p class="text-xs text-destructive">{coverPhotoError}</p>
+      {:else}
+        <span class="text-xs text-muted-foreground">Add photo</span>
+      {/if}
+    </div>
 
     <!-- Title -->
     <div class="flex flex-col gap-1.5">
       <label for="title" class="text-sm font-medium text-foreground">Event name <span class="text-destructive">*</span></label>
       <input id="title" type="text" bind:value={title} placeholder="April Book Club" maxlength="80"
         class="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition" />
-    </div>
-
-    <!-- Cover photo -->
-    <div class="flex flex-col gap-1.5">
-      <label class="text-sm font-medium text-foreground">Cover photo <span class="text-muted-foreground font-normal">(optional)</span></label>
-      <input bind:this={coverPhotoInput} type="file" accept="image/*" class="hidden" onchange={handleCoverPhotoChange} />
-      {#if coverPhotoUrl}
-        <div class="relative rounded-xl overflow-hidden border border-border" style="height: 160px">
-          <img src={coverPhotoUrl} alt="Cover" class="w-full h-full object-cover" />
-          <button
-            type="button"
-            onclick={removeCoverPhoto}
-            class="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
-            title="Remove photo"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-      {:else}
-        <button
-          type="button"
-          onclick={() => coverPhotoInput?.click()}
-          disabled={coverPhotoUploading}
-          class="flex flex-col items-center justify-center gap-2 w-full rounded-xl border-2 border-dashed border-border hover:border-muted-foreground/40 transition-colors bg-background disabled:opacity-50"
-          style="height: 120px"
-        >
-          {#if coverPhotoUploading}
-            <div class="w-5 h-5 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin"></div>
-            <span class="text-xs text-muted-foreground">Uploading…</span>
-          {:else}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(234 12% 62%)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-              <circle cx="8.5" cy="8.5" r="1.5"/>
-              <polyline points="21 15 16 10 5 21"/>
-            </svg>
-            <span class="text-xs text-muted-foreground">Click to add a cover photo</span>
-          {/if}
-        </button>
-      {/if}
-      {#if coverPhotoError}
-        <p class="text-xs text-destructive">{coverPhotoError}</p>
-      {/if}
     </div>
 
     <!-- Description -->

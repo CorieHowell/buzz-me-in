@@ -177,7 +177,7 @@
       <a
         href="/groups/{groupId}/invite"
         class="flex items-center gap-3 rounded-xl p-4 mb-5 hover:opacity-90 transition-opacity"
-        style="background: hsl(234 20% 95%)"
+        style="background: hsl(234 20% 89%)"
       >
         <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style="background: hsl(234 26% 41%)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -207,7 +207,7 @@
         {@const isMe = member.user_id === currentUserId}
         {@const isMemberAdmin = member.role === 'admin'}
 
-        <div class="flex items-center gap-3 rounded-xl border border-border bg-background p-4">
+        <div class="flex items-center gap-3 rounded-xl bg-white p-4">
           {#if member.users?.avatar_url}
             <img src={member.users.avatar_url} alt={member.users.display_name} class="w-10 h-10 rounded-full object-cover shrink-0" />
           {:else}

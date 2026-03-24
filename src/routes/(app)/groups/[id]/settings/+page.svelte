@@ -82,7 +82,7 @@
   let isAdmin = $derived(currentUserRole === 'admin')
 </script>
 
-<div class="max-w-lg mx-auto px-4 py-6">
+<div class="max-w-2xl mx-auto px-4 py-6">
 
   {#if loading}
     <div class="flex flex-col gap-4 animate-pulse">
@@ -94,13 +94,13 @@
   {:else}
     <h2 class="text-lg font-semibold text-foreground mb-6">Group settings</h2>
 
-    <div class="flex flex-col gap-5">
+    <!-- Group photo (centered, circle) -->
+    <div class="flex flex-col items-center gap-1 mb-6">
+      <PhotoUploader bucket="group-avatars" pathPrefix={groupId} bind:value={avatarUrl} shape="circle" size="lg" />
+      <span class="text-xs text-muted-foreground">Change photo</span>
+    </div>
 
-      <!-- Group photo -->
-      <div class="flex flex-col gap-1.5">
-        <label class="text-sm font-medium text-foreground">Group photo</label>
-        <PhotoUploader bucket="group-avatars" pathPrefix={groupId} bind:value={avatarUrl} shape="square" size="lg" />
-      </div>
+    <div class="flex flex-col gap-5">
 
       <!-- Name -->
       <div class="flex flex-col gap-1.5">

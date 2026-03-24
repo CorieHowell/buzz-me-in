@@ -10,17 +10,7 @@
   let loading = $state(true)
   let userId = $state(null)
 
-  const DEV_MOCK = true
-
   onMount(async () => {
-    if (DEV_MOCK) {
-      userId = 'mock-user-id'
-      group = { id: groupId, name: groupId === 'g1' ? 'Book Club' : groupId === 'g2' ? 'Hiking Crew' : 'Dinner Club', avatar_url: null }
-      currentUserRole = 'admin'
-      loading = false
-      return
-    }
-
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { goto('/auth/login'); return }
     userId = user.id
@@ -28,7 +18,6 @@
 
   $effect(() => {
     if (!groupId || !userId) return
-    if (DEV_MOCK) return
     loading = true
     group = null
     ;(async () => {
@@ -175,7 +164,7 @@
     </div>
 
     <!-- Tab content -->
-    <div class="flex-1 overflow-y-auto">
+    <div class="flex-1 overflow-y-auto" style="background: hsl(234 20% 96%)">
       <slot />
     </div>
 

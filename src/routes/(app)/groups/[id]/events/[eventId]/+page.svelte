@@ -174,11 +174,20 @@
   let totalSlots = $derived(bringItems.reduce((sum, item) => sum + item.quantity, 0))
 </script>
 
-<div class="max-w-2xl mx-auto px-4 py-6">
+<div class="max-w-2xl mx-auto px-4 py-8">
+
+  <!-- Back link -->
+  <a href="/groups/{groupId}/events" class="flex items-center gap-1.5 text-sm mb-7" style="color: hsl(234 12% 52%)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    Back to All Events
+  </a>
+
   {#if loading}
     <div class="flex flex-col gap-3">
       {#each [1,2,3] as _}
-        <div class="rounded-xl border border-border p-4 animate-pulse">
+        <div class="rounded-xl bg-white p-4 animate-pulse">
           <div class="h-4 bg-muted rounded w-1/2 mb-2"></div>
           <div class="h-3 bg-muted rounded w-1/3"></div>
         </div>
@@ -188,52 +197,66 @@
   {:else if event}
 
     <!-- Event header -->
-    <div class="mb-6">
-      <div class="flex items-start justify-between">
-        <h2 class="text-xl font-semibold text-foreground">{event.title}</h2>
-        {#if isAdmin}
-          <a href="/groups/{groupId}/events/{eventId}/edit"
-            class="p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
-            style="color: hsl(234 12% 52%)">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-          </a>
-        {/if}
-      </div>
+    <div class="mb-8 relative">
 
-      {#if event.status === 'pending_date'}
-        <span class="inline-block mt-1 text-xs px-2 py-0.5 rounded-full font-medium" style="background: hsl(35 100% 97%); color: hsl(35 80% 40%)">
-          Picking a date
-        </span>
-      {:else}
-        <p class="text-sm text-muted-foreground mt-1">{formatDate(event.event_date)} at {formatTime(event.event_date)}</p>
-      {/if}
-
-      {#if event.location}
-        <p class="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+      <!-- Edit button (admin) -->
+      {#if isAdmin}
+        <a href="/groups/{groupId}/events/{eventId}/edit"
+          class="absolute top-0 right-0 p-2 rounded-lg hover:bg-muted transition-colors"
+          style="color: hsl(234 12% 52%)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
-          {event.location}
-        </p>
+        </a>
       {/if}
 
-      {#if host}
-        <p class="text-xs text-muted-foreground mt-1">Hosted by {host.display_name}</p>
-      {/if}
-
-      {#if event.description}
-        <p class="text-sm text-foreground mt-3">{event.description}</p>
-      {/if}
+      <!-- Photo + title + meta -->
+      <div class="flex items-center gap-4">
+        {#if event.cover_photo_url}
+          <img src={event.cover_photo_url} alt={event.title} class="w-20 h-20 rounded-full object-cover shrink-0" />
+        {/if}
+        <div class="flex-1 min-w-0">
+          <div class="flex items-start gap-2 flex-wrap mb-1.5">
+            <h2 class="text-3xl font-extrabold leading-none" style="color: hsl(234 26% 41%)">{event.title}</h2>
+            {#if event.status === 'pending_date'}
+              <span class="text-xs px-2 py-0.5 rounded-full font-medium shrink-0 mt-1" style="background: hsl(35 100% 97%); color: hsl(35 80% 40%)">
+                Picking a date
+              </span>
+            {/if}
+          </div>
+          <div class="flex flex-col gap-1">
+            {#if host}
+              <p class="text-sm font-medium text-muted-foreground">Hosted by {host.display_name}</p>
+            {/if}
+            {#if event.status !== 'pending_date'}
+              <p class="text-sm font-medium text-foreground">{formatDate(event.event_date)} at {formatTime(event.event_date)}</p>
+            {/if}
+            {#if event.location}
+              <p class="text-sm text-muted-foreground flex items-center gap-1.5">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                </svg>
+                {event.location}
+              </p>
+            {/if}
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- Description card -->
+    {#if event.description}
+      <div class="rounded-xl bg-white p-5 mb-5">
+        <p class="text-sm text-foreground">{event.description}</p>
+      </div>
+    {/if}
 
     <!-- Date picker (pending_date) -->
     {#if event.status === 'pending_date'}
-      <div class="rounded-xl border border-border p-4 mb-4">
-        <h3 class="text-sm font-semibold text-foreground mb-3">Which dates work for you?</h3>
-        <div class="flex flex-col gap-2">
+      <div class="rounded-xl bg-white p-5 mb-5">
+        <h3 class="text-base font-bold text-foreground mb-4">Which dates work for you?</h3>
+        <div class="flex flex-col gap-3">
           {#each dateOptions as option}
             {@const responseCount = option.event_date_responses?.filter(r => r.available).length ?? 0}
             {@const myResponse = myDateResponses.has(option.id)}
@@ -264,12 +287,12 @@
 
     {:else}
       <!-- RSVP -->
-      <div class="rounded-xl border border-border p-4 mb-4">
-        <div class="flex items-center justify-between mb-3">
+      <div class="rounded-xl bg-white p-5 mb-5">
+        <div class="flex items-center justify-between mb-4">
           <h3 class="text-sm font-semibold text-foreground">Are you going?</h3>
           <p class="text-xs text-muted-foreground">{goingCount} going · {notGoingCount} not going</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex gap-3">
           <button
             onclick={() => setRsvp('going')}
             disabled={rsvpLoading}
@@ -293,9 +316,9 @@
         </div>
 
         {#if rsvps.filter(r => r.status === 'going').length > 0}
-          <div class="mt-3 pt-3 border-t border-border">
-            <p class="text-xs text-muted-foreground mb-1">Going</p>
-            <div class="flex flex-wrap gap-1.5">
+          <div class="mt-4 pt-4 border-t border-border">
+            <p class="text-xs text-muted-foreground mb-2">Going</p>
+            <div class="flex flex-wrap gap-2">
               {#each rsvps.filter(r => r.status === 'going') as rsvp}
                 <span class="text-xs px-2 py-1 rounded-full" style="background: hsl(234 40% 97%); color: hsl(234 26% 41%)">
                   {rsvp.users?.display_name}
@@ -308,9 +331,9 @@
     {/if}
 
     <!-- Bring list -->
-    <div class="rounded-xl border border-border p-4">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-semibold text-foreground">Bring list</h3>
+    <div class="rounded-xl bg-white p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-foreground">Bring list</h3>
         <p class="text-xs text-muted-foreground">{claimedCount}/{totalSlots} claimed</p>
       </div>
 
@@ -318,13 +341,13 @@
         <p class="text-sm text-muted-foreground mb-3">Nothing on the list yet.</p>
       {/if}
 
-      <div class="flex flex-col gap-2 mb-3">
+      <div class="flex flex-col gap-2 mb-4">
         {#each bringItems as item}
           {@const claimed = item.bring_list_claims ?? []}
           {@const myClaim = claimed.find(c => c.user_id === currentUserId)}
           {@const openSlots = item.quantity - claimed.length}
 
-          <div class="flex items-start gap-3 py-2 border-b border-border last:border-0">
+          <div class="flex items-start gap-3 py-3 border-b border-border last:border-0">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
                 <p class="text-sm font-medium text-foreground">{item.name}</p>

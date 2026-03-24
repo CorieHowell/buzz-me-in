@@ -136,7 +136,7 @@
   </div>
 
   {#if showNewList}
-    <div class="rounded-xl border border-border p-4 mb-4">
+    <div class="rounded-xl bg-white p-4 mb-4">
       <p class="text-sm font-medium text-foreground mb-2">New list</p>
       <div class="flex gap-2">
         <input
@@ -175,7 +175,7 @@
     </div>
 
   {:else if lists.length === 0}
-    <div class="text-center py-12 rounded-xl border border-border">
+    <div class="text-center py-12 rounded-xl bg-white">
       <p class="text-sm text-muted-foreground mb-1">No lists yet</p>
       {#if isAdmin}
         <p class="text-xs text-muted-foreground">Create a list to track books, restaurants, ideas — anything your group wants.</p>
@@ -189,7 +189,7 @@
         {@const totalCount = list.list_items.length}
         {@const isExpanded = expandedList === list.id}
 
-        <div class="rounded-xl border border-border bg-background overflow-hidden">
+        <div class="rounded-xl bg-white overflow-hidden">
 
           <button
             onclick={() => expandedList = isExpanded ? null : list.id}

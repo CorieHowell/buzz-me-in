@@ -21,54 +21,7 @@
 
   const EMOJI_OPTIONS = ['❤️', '👍', '😂', '😮', '🙌', '🔥']
 
-  const DEV_MOCK = true
-
   onMount(async () => {
-    if (DEV_MOCK) {
-      currentUserId = 'mock-user-id'
-      currentUserRole = 'admin'
-      adminUserId = 'mock-user-id'
-      posts = [
-        {
-          id: 'post1', body: "Just finished the last chapter — so good! Can't wait to discuss on Thursday. Anyone bringing snacks?",
-          created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-          is_edited: false, is_deleted: false, is_announcement: true,
-          author_id: 'u1',
-          users: { display_name: 'Sarah M.', avatar_url: null },
-          reactions: [{ emoji: '❤️', count: 4 }, { emoji: '🙌', count: 2 }],
-          myReaction: '❤️',
-          replies: [
-            { id: 'r1', body: "Me too! I'll bring chips 🍟", created_at: new Date(Date.now() - 20 * 60 * 1000).toISOString(), is_edited: false, is_deleted: false, author_id: 'u3', users: { display_name: 'James T.', avatar_url: null } },
-            { id: 'r2', body: "Can't wait to discuss the ending!", created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(), is_edited: false, is_deleted: false, author_id: 'u5', users: { display_name: 'Priya K.', avatar_url: null } },
-          ],
-        },
-        {
-          id: 'post2', body: 'Thinking Italian for next month — anyone have a good spot in Silver Lake? Open to suggestions!',
-          created_at: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
-          is_edited: false, is_deleted: false, is_announcement: false,
-          author_id: 'u5',
-          users: { display_name: 'Priya K.', avatar_url: null },
-          reactions: [],
-          myReaction: null,
-          replies: [],
-        },
-        {
-          id: 'post3', body: "I'm bringing my famous lemon bars 🍋",
-          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          is_edited: false, is_deleted: false, is_announcement: false,
-          author_id: 'mock-user-id',
-          users: { display_name: 'Corie H.', avatar_url: null },
-          reactions: [{ emoji: '😂', count: 3 }, { emoji: '❤️', count: 1 }],
-          myReaction: null,
-          replies: [
-            { id: 'r3', body: 'Yes!! Obsessed with your lemon bars 😍', created_at: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString(), is_edited: false, is_deleted: false, author_id: 'u1', users: { display_name: 'Sarah M.', avatar_url: null } },
-          ],
-        },
-      ]
-      loading = false
-      return
-    }
-
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { goto('/auth/login'); return }
     currentUserId = user.id
@@ -96,7 +49,6 @@
   })
 
   async function loadPosts() {
-    if (DEV_MOCK) return
     loading = true
     const { data } = await supabase
       .from('posts')
@@ -214,16 +166,14 @@
       return { ...p, reactions, myReaction }
     })
 
-    if (!DEV_MOCK) {
-      if (prevMyReaction) {
-        await supabase.from('post_reactions').delete().eq('post_id', postId).eq('user_id', currentUserId)
-      }
-      if (prevMyReaction !== emoji) {
-        await supabase.from('post_reactions').upsert(
-          { post_id: postId, user_id: currentUserId, emoji },
-          { onConflict: 'post_id,user_id' }
-        )
-      }
+    if (prevMyReaction) {
+      await supabase.from('post_reactions').delete().eq('post_id', postId).eq('user_id', currentUserId)
+    }
+    if (prevMyReaction !== emoji) {
+      await supabase.from('post_reactions').upsert(
+        { post_id: postId, user_id: currentUserId, emoji },
+        { onConflict: 'post_id,user_id' }
+      )
     }
   }
 
@@ -256,7 +206,7 @@
 <div class="max-w-2xl mx-auto px-4 py-6">
 
   <!-- New post composer -->
-  <div class="rounded-xl border border-border p-4 mb-6">
+  <div class="rounded-xl bg-white p-4 mb-6">
     <textarea
       bind:value={newPostBody}
       placeholder="Write something to the group…"
@@ -301,8 +251,7 @@
         {@const isExpanded = expandedPosts.has(post.id)}
         {@const isOwner = post.author_id === currentUserId}
 
-        <div class="rounded-xl border bg-background p-4"
-          style={post.is_announcement ? 'border-color: hsl(234 26% 41%)' : 'border-color: hsl(234 20% 88%)'}>
+        <div class="rounded-xl bg-white p-4">
 
           {#if post.is_announcement}
             <div class="flex items-center gap-1.5 mb-2">
