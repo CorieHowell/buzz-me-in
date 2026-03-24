@@ -51,7 +51,6 @@
     profileDropdownOpen = false
     notifOpen = !notifOpen
     if (notifOpen) {
-      if (DEV_MOCK) { unreadNotifications = 0; return }
       notifLoading = true
       await loadNotifItems()
       notifLoading = false
@@ -137,22 +136,6 @@
     return `${days}d`
   }
 
-  const DEV_MOCK = true
-
-  const mockUser = { id: 'mock-user-id', email: 'dev@example.com' }
-  const mockGroups = [
-    { id: 'g1', name: 'Book Club', avatar_url: null, role: 'admin', is_favorited: true },
-    { id: 'g2', name: 'Hiking Crew', avatar_url: null, role: 'member', is_favorited: false },
-    { id: 'g3', name: 'Dinner Club', avatar_url: null, role: 'co_admin', is_favorited: false },
-  ]
-
-  const mockNotifs = [
-    { id: 'n1', type: 'event_reminder', body: 'March Book Club is tomorrow at 7:00 PM', groupName: 'Book Club',  entityPhoto: null, entityInitials: 'BC', link: '/groups/g1/events/e1', created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(), is_read: false },
-    { id: 'n2', type: 'join_request',   body: 'Alex W. wants to join Hiking Crew',      actorName: 'Alex W.',   actorPhoto: null,  link: '/groups/g2/members', created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), is_read: false },
-    { id: 'n3', type: 'reply',          body: 'Sarah M. replied to your post in Book Club', actorName: 'Sarah M.', actorPhoto: null, link: '/groups/g1/board', created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), is_read: true },
-    { id: 'n4', type: 'bring_assigned', body: "You've been assigned to bring Lemon bars to March Book Club", entityPhoto: null, entityInitials: 'BC', link: '/groups/g1/events/e1', created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), is_read: true },
-  ]
-
   function notifAvatarInitials(notif) {
     if (notif.actorName) return notif.actorName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     return notif.entityInitials ?? '?'
@@ -163,15 +146,6 @@
   }
 
   onMount(async () => {
-    if (DEV_MOCK) {
-      user = mockUser
-      myGroups = mockGroups
-      notifItems = mockNotifs
-      unreadNotifications = mockNotifs.filter(n => !n.is_read).length
-      ready = true
-      return
-    }
-
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { goto('/auth/login'); return }
     user = session.user

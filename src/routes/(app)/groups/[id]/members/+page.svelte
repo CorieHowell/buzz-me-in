@@ -114,7 +114,7 @@
   {#if loading}
     <div class="flex flex-col gap-3">
       {#each [1,2,3] as _}
-        <div class="rounded-xl border border-border p-4 animate-pulse">
+        <div class="rounded-xl bg-white p-4 animate-pulse">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-muted shrink-0"></div>
             <div class="flex-1">
@@ -177,7 +177,7 @@
       <a
         href="/groups/{groupId}/invite"
         class="flex items-center gap-3 rounded-xl p-4 mb-5 hover:opacity-90 transition-opacity"
-        style="background: hsl(234 20% 95%)"
+        style="background: hsl(234 20% 91%)"
       >
         <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style="background: hsl(234 26% 41%)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -207,7 +207,7 @@
         {@const isMe = member.user_id === currentUserId}
         {@const isMemberAdmin = member.role === 'admin'}
 
-        <div class="flex items-center gap-3 rounded-xl border border-border bg-background p-4">
+        <div class="flex items-center gap-3 rounded-xl bg-white p-4">
           {#if member.users?.avatar_url}
             <img src={member.users.avatar_url} alt={member.users.display_name} class="w-10 h-10 rounded-full object-cover shrink-0" />
           {:else}
@@ -230,7 +230,6 @@
             {#if member.users?.city}
               <p class="text-xs text-muted-foreground">{member.users.city}{member.users.state ? `, ${member.users.state}` : ''}</p>
             {/if}
-            <p class="text-xs text-muted-foreground">Joined {timeAgo(member.joined_at)}</p>
 
             <!-- Anonymous suggestion link — only show to non-admins, next to admin row -->
             {#if isMemberAdmin && !isAdmin && !isMe}

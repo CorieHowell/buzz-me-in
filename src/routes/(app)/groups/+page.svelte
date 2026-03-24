@@ -123,9 +123,9 @@
             <div class="flex items-center gap-3 rounded-xl border border-border bg-background p-3">
               <button onclick={() => goto(`/groups/${group.id}`)} class="flex items-center gap-3 flex-1 min-w-0 text-left">
                 {#if group.avatar_url}
-                  <img src={group.avatar_url} alt={group.name} class="w-10 h-10 rounded-xl shrink-0 object-cover" />
+                  <img src={group.avatar_url} alt={group.name} class="w-10 h-10 rounded-full shrink-0 object-cover" />
                 {:else}
-                  <div class="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shrink-0" style="background: hsl(234 26% 41%)">
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0" style="background: hsl(234 26% 41%)">
                     {initials(group.name)}
                   </div>
                 {/if}
@@ -187,9 +187,9 @@
             <div class="flex items-center gap-3 rounded-xl border border-border bg-background p-3">
               <button onclick={() => goto(`/groups/${group.id}`)} class="flex items-center gap-3 flex-1 min-w-0 text-left">
                 {#if group.avatar_url}
-                  <img src={group.avatar_url} alt={group.name} class="w-10 h-10 rounded-xl shrink-0 object-cover" />
+                  <img src={group.avatar_url} alt={group.name} class="w-10 h-10 rounded-full shrink-0 object-cover" />
                 {:else}
-                  <div class="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shrink-0" style="background: hsl(234 26% 41%)">
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0" style="background: hsl(234 26% 41%)">
                     {initials(group.name)}
                   </div>
                 {/if}

@@ -7,9 +7,12 @@
   let groupId = $derived($page.params.id)
   let upcomingEvents = $state([])
   let pastEvents = $state([])
+  let drafts = $state([])
   let loading = $state(true)
   let currentUserRole = $state(null)
-  let showPast = $state(false)
+  let activeFilter = $state('upcoming')
+
+  let isAdmin = $derived(currentUserRole === 'admin' || currentUserRole === 'co_admin')
 
   onMount(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -26,25 +29,37 @@
 
     const now = new Date().toISOString()
 
-    const { data: upcoming } = await supabase
-      .from('events')
-      .select('id, title, event_date, location, status, host_user_id, users(display_name)')
-      .eq('group_id', groupId)
-      .in('status', ['confirmed', 'pending_date'])
-      .gte('event_date', now)
-      .order('event_date', { ascending: true })
+    const [upcomingRes, pastRes, draftsRes] = await Promise.all([
+      supabase
+        .from('events')
+        .select('id, title, event_date, location, status, cover_photo_url, host_user_id, users(display_name)')
+        .eq('group_id', groupId)
+        .in('status', ['confirmed', 'pending_date'])
+        .gte('event_date', now)
+        .order('event_date', { ascending: true }),
 
-    upcomingEvents = upcoming ?? []
+      supabase
+        .from('events')
+        .select('id, title, event_date, location, status, cover_photo_url, host_user_id, users(display_name)')
+        .eq('group_id', groupId)
+        .neq('status', 'draft')
+        .neq('status', 'cancelled')
+        .lt('event_date', now)
+        .order('event_date', { ascending: false })
+        .limit(10),
 
-    const { data: past } = await supabase
-      .from('events')
-      .select('id, title, event_date, location, status, host_user_id, users(display_name)')
-      .eq('group_id', groupId)
-      .lt('event_date', now)
-      .order('event_date', { ascending: false })
-      .limit(10)
+      // Only fetch drafts — they'll only be shown to admins
+      supabase
+        .from('events')
+        .select('id, title, created_at, datetime_mode, location_mode, bring_list_mode')
+        .eq('group_id', groupId)
+        .eq('status', 'draft')
+        .order('created_at', { ascending: false }),
+    ])
 
-    pastEvents = past ?? []
+    upcomingEvents = upcomingRes.data ?? []
+    pastEvents = pastRes.data ?? []
+    drafts = draftsRes.data ?? []
     loading = false
   })
 
@@ -60,12 +75,25 @@
     })
   }
 
-  let isAdmin = $derived(currentUserRole === 'admin' || currentUserRole === 'co_admin')
+  function timeAgo(dateStr) {
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const mins = Math.floor(diff / 60000)
+    const hours = Math.floor(mins / 60)
+    const days = Math.floor(hours / 24)
+    if (mins < 1) return 'just now'
+    if (mins < 60) return `${mins}m ago`
+    if (hours < 24) return `${hours}h ago`
+    return `${days}d ago`
+  }
+
+  function isDraftIncomplete(draft) {
+    return !draft.datetime_mode || !draft.location_mode
+  }
 </script>
 
 <div class="max-w-2xl mx-auto px-4 py-6">
 
-  <div class="flex items-center justify-between mb-6">
+  <div class="flex items-center justify-between mb-4">
     <h2 class="text-base font-semibold text-foreground">Events</h2>
     {#if isAdmin}
       <a
@@ -78,10 +106,38 @@
     {/if}
   </div>
 
+  <!-- Pill filters -->
+  <div class="flex gap-2 mb-6">
+    {#each ['upcoming', 'past'] as filter}
+      <button
+        onclick={() => activeFilter = filter}
+        class="px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1"
+        style={activeFilter === filter
+          ? 'background: white; border: 1.5px solid hsl(234 20% 78%); color: hsl(234 26% 41%)'
+          : 'background: white; border: 1.5px solid transparent; color: hsl(234 20% 65%)'}
+      >
+        {filter === 'upcoming' ? 'Upcoming' : 'Past'}
+        <span class="opacity-75 text-[10px]">({filter === 'upcoming' ? upcomingEvents.length : pastEvents.length})</span>
+      </button>
+    {/each}
+    {#if isAdmin}
+      <button
+        onclick={() => activeFilter = 'drafts'}
+        class="px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1"
+        style={activeFilter === 'drafts'
+          ? 'background: white; border: 1.5px solid hsl(234 20% 78%); color: hsl(234 26% 41%)'
+          : 'background: white; border: 1.5px solid transparent; color: hsl(234 20% 65%)'}
+      >
+        Drafts
+        <span class="opacity-75 text-[10px]">({drafts.length})</span>
+      </button>
+    {/if}
+  </div>
+
   {#if loading}
     <div class="flex flex-col gap-3">
       {#each [1,2] as _}
-        <div class="rounded-xl border border-border p-4 animate-pulse">
+        <div class="rounded-xl bg-white p-4 animate-pulse">
           <div class="h-3 bg-muted rounded w-1/4 mb-3"></div>
           <div class="h-4 bg-muted rounded w-2/3 mb-2"></div>
           <div class="h-3 bg-muted rounded w-1/3"></div>
@@ -89,10 +145,10 @@
       {/each}
     </div>
 
-  {:else}
+  {:else if activeFilter === 'upcoming'}
 
     {#if upcomingEvents.length === 0}
-      <div class="text-center py-12 rounded-xl border border-border">
+      <div class="text-center py-12 rounded-xl bg-white">
         <p class="text-sm text-muted-foreground mb-1">No upcoming events</p>
         {#if isAdmin}
           <a
@@ -105,31 +161,50 @@
         {/if}
       </div>
     {:else}
-      <div class="flex flex-col gap-3 mb-6">
+      <div class="flex flex-col gap-3">
         {#each upcomingEvents as event}
           <button
             onclick={() => goto(`/groups/${groupId}/events/${event.id}`)}
-            class="flex items-center gap-4 rounded-xl border border-border bg-background p-4 text-left hover:bg-muted/30 transition-colors w-full"
+            class="flex items-center gap-4 rounded-xl bg-white p-4 text-left hover:bg-gray-50 transition-colors w-full"
           >
-            <!-- Date block -->
-            <div class="flex flex-col items-center justify-center w-12 h-12 rounded-lg shrink-0" style="background: hsl(234 40% 97%)">
-              <span class="text-xs font-medium" style="color: hsl(234 26% 41%)">{new Date(event.event_date).toLocaleDateString('en-US', { month: 'short' })}</span>
-              <span class="text-lg font-bold leading-none" style="color: hsl(234 26% 41%)">{new Date(event.event_date).getDate()}</span>
+            <!-- Circle: photo or date/TBD -->
+            <div class="w-12 h-12 rounded-full shrink-0 overflow-hidden flex items-center justify-center" style="background: hsl(234 40% 97%)">
+              {#if event.cover_photo_url}
+                <img src={event.cover_photo_url} alt={event.title} class="w-full h-full object-cover" />
+              {:else if event.event_date && event.status !== 'pending_date'}
+                <div class="flex flex-col items-center justify-center w-full h-full">
+                  <span class="text-[10px] font-medium leading-none" style="color: hsl(234 26% 41%)">{new Date(event.event_date).toLocaleDateString('en-US', { month: 'short' })}</span>
+                  <span class="text-base font-bold leading-none mt-0.5" style="color: hsl(234 26% 41%)">{new Date(event.event_date).getDate()}</span>
+                </div>
+              {:else}
+                <span class="text-[10px] font-medium" style="color: hsl(234 26% 41%)">TBD</span>
+              {/if}
             </div>
 
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 mb-0.5">
-                <p class="text-sm font-semibold text-foreground truncate">{event.title}</p>
+              <div class="flex items-center gap-2 mb-1">
+                <p class="text-base font-bold text-foreground truncate">{event.title}</p>
                 {#if event.status === 'pending_date'}
                   <span class="text-xs px-2 py-0.5 rounded-full shrink-0" style="background: hsl(35 100% 97%); color: hsl(35 80% 40%)">Date TBD</span>
                 {/if}
               </div>
-              <p class="text-xs text-muted-foreground">{formatDate(event.event_date)} · {formatTime(event.event_date)}</p>
+              {#if event.event_date && event.status !== 'pending_date'}
+                <p class="text-xs text-muted-foreground flex items-center gap-1">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  {formatDate(event.event_date)} · {formatTime(event.event_date)}
+                </p>
+              {/if}
               {#if event.location}
-                <p class="text-xs text-muted-foreground truncate">{event.location}</p>
+                <p class="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  {event.location}
+                </p>
               {/if}
               {#if event.users?.display_name}
-                <p class="text-xs text-muted-foreground">Hosted by {event.users.display_name}</p>
+                <p class="text-xs text-muted-foreground flex items-center gap-1">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  {event.users.display_name}
+                </p>
               {/if}
             </div>
 
@@ -141,42 +216,84 @@
       </div>
     {/if}
 
-    <!-- Past events -->
-    {#if pastEvents.length > 0}
-      <button
-        onclick={() => showPast = !showPast}
-        class="flex items-center gap-2 text-sm font-medium mb-3"
-        style="color: hsl(234 12% 52%)"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-          style="transform: rotate({showPast ? 90 : 0}deg); transition: transform 0.2s">
-          <polyline points="9 18 15 12 9 6"/>
-        </svg>
-        Past events ({pastEvents.length})
-      </button>
+  {:else if activeFilter === 'past'}
 
-      {#if showPast}
-        <div class="flex flex-col gap-2">
-          {#each pastEvents as event}
-            <button
-              onclick={() => goto(`/groups/${groupId}/events/${event.id}`)}
-              class="flex items-center gap-4 rounded-xl border border-border bg-background p-4 text-left hover:bg-muted/30 transition-colors w-full opacity-60"
-            >
-              <div class="flex flex-col items-center justify-center w-12 h-12 rounded-lg bg-muted shrink-0">
+    {#if pastEvents.length === 0}
+      <div class="text-center py-12 rounded-xl bg-white">
+        <p class="text-sm text-muted-foreground">No past events</p>
+      </div>
+    {:else}
+      <div class="flex flex-col gap-2">
+        {#each pastEvents as event}
+          <button
+            onclick={() => goto(`/groups/${groupId}/events/${event.id}`)}
+            class="flex items-center gap-4 rounded-xl bg-white p-4 text-left hover:bg-gray-50 transition-colors w-full opacity-60"
+          >
+            <div class="flex flex-col items-center justify-center w-12 h-12 rounded-lg bg-muted shrink-0">
+              {#if event.event_date}
                 <span class="text-xs font-medium text-muted-foreground">{new Date(event.event_date).toLocaleDateString('en-US', { month: 'short' })}</span>
                 <span class="text-lg font-bold leading-none text-muted-foreground">{new Date(event.event_date).getDate()}</span>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold text-foreground truncate">{event.title}</p>
+              {:else}
+                <span class="text-xs font-medium text-muted-foreground">—</span>
+              {/if}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-foreground truncate">{event.title}</p>
+              {#if event.event_date}
                 <p class="text-xs text-muted-foreground">{formatDate(event.event_date)}</p>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(234 12% 52%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
-                <polyline points="9 18 15 12 9 6"/>
+              {/if}
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(234 12% 52%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+        {/each}
+      </div>
+    {/if}
+
+  {:else if activeFilter === 'drafts'}
+
+    {#if drafts.length === 0}
+      <div class="text-center py-12 rounded-xl bg-white">
+        <p class="text-sm text-muted-foreground mb-1">No drafts</p>
+        <a
+          href="/groups/{groupId}/events/new"
+          class="text-sm font-medium"
+          style="color: hsl(234 26% 41%)"
+        >
+          Create an event
+        </a>
+      </div>
+    {:else}
+      <div class="flex flex-col gap-3">
+        {#each drafts as draft}
+          <button
+            onclick={() => goto(`/groups/${groupId}/events/new?draft=${draft.id}`)}
+            class="flex items-center gap-4 rounded-xl bg-white p-4 text-left hover:bg-gray-50 transition-colors w-full"
+          >
+            <div class="flex flex-col items-center justify-center w-12 h-12 rounded-lg shrink-0" style="background: hsl(234 40% 97%)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="hsl(234 26% 41%)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
-            </button>
-          {/each}
-        </div>
-      {/if}
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <p class="text-sm font-semibold text-foreground truncate">{draft.title || 'Untitled'}</p>
+                {#if isDraftIncomplete(draft)}
+                  <span class="text-xs px-2 py-0.5 rounded-full shrink-0" style="background: hsl(35 100% 97%); color: hsl(35 80% 40%)">Incomplete</span>
+                {/if}
+              </div>
+              <p class="text-xs text-muted-foreground">Created {timeAgo(draft.created_at)}</p>
+            </div>
+
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(234 12% 52%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+        {/each}
+      </div>
     {/if}
 
   {/if}

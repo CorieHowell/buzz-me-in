@@ -119,7 +119,7 @@
   {#if loading}
     <div class="flex flex-col gap-4">
       {#each [1,2,3] as _}
-        <div class="rounded-xl border border-border p-4 animate-pulse">
+        <div class="rounded-xl bg-white p-4 animate-pulse">
           <div class="h-3 bg-muted rounded w-1/3 mb-3"></div>
           <div class="h-4 bg-muted rounded w-2/3"></div>
         </div>
@@ -136,11 +136,11 @@
 
     <!-- Next event -->
     {#if nextEvent}
-      <div class="rounded-xl border p-4 mb-4" style="border-color: hsl(234 26% 41%); background: hsl(234 40% 97%)">
+      <div class="rounded-xl p-4 mb-4" style="background: hsl(234 20% 91%)">
         <div class="flex items-start justify-between">
           <div>
             <p class="text-xs font-semibold uppercase tracking-wider mb-1" style="color: hsl(234 26% 41%)">Next event</p>
-            <p class="text-base font-semibold text-foreground">{nextEvent.title}</p>
+            <p class="text-lg font-bold text-foreground">{nextEvent.title}</p>
             <p class="text-sm text-muted-foreground mt-0.5">{formatEventDate(nextEvent.event_date)} at {formatEventTime(nextEvent.event_date)}</p>
             {#if nextEvent.location}
               <p class="text-sm text-muted-foreground">{nextEvent.location}</p>
@@ -154,7 +154,7 @@
         </div>
       </div>
     {:else}
-      <div class="rounded-xl border border-border p-4 mb-4 flex items-center justify-between">
+      <div class="rounded-xl bg-white p-4 mb-4 flex items-center justify-between">
         <div>
           <p class="text-sm font-medium text-foreground">No upcoming events</p>
           <p class="text-xs text-muted-foreground mt-0.5">Create the first one for your group.</p>
@@ -173,7 +173,7 @@
 
     <!-- Pinned posts -->
     {#if pinnedPosts.length > 0}
-      <div class="rounded-xl border border-border p-4 mb-4">
+      <div class="rounded-xl bg-white p-4 mb-4">
         <div class="flex items-center gap-2 mb-3">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(234 26% 41%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
@@ -189,24 +189,6 @@
       </div>
     {/if}
 
-    <!-- Members strip -->
-    <div class="flex items-center gap-2 mb-4">
-      <div class="flex -space-x-2">
-        {#each members.slice(0, 5) as member}
-          {#if member.users?.avatar_url}
-            <img src={member.users.avatar_url} alt={member.users.display_name} class="w-7 h-7 rounded-full border-2 border-background object-cover shrink-0" />
-          {:else}
-            <div class="w-7 h-7 rounded-full border-2 border-background flex items-center justify-center text-xs font-semibold text-white shrink-0" style="background: hsl(234 26% 41%)">
-              {initials(member.users?.display_name)}
-            </div>
-          {/if}
-        {/each}
-      </div>
-      {#if members.length > 5}
-        <span class="text-xs text-muted-foreground">+{members.length - 5} more</span>
-      {/if}
-    </div>
-
     <!-- Message board -->
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-sm font-semibold text-foreground">Board</h2>
@@ -216,7 +198,7 @@
     </div>
 
     {#if recentPosts.length === 0}
-      <div class="rounded-xl border border-border p-6 text-center">
+      <div class="rounded-xl bg-white p-6 text-center">
         <p class="text-sm text-muted-foreground">No posts yet. Be the first to post!</p>
         <a
           href="/groups/{groupId}/post/new"
@@ -229,16 +211,9 @@
     {:else}
       <div class="flex flex-col gap-2">
         {#each recentPosts as post}
-          <div class="rounded-xl border border-border p-4 hover:bg-muted/30 transition-colors cursor-pointer" onclick={() => goto(`/groups/${groupId}/posts/${post.id}`)}>
+          <div class="rounded-xl bg-white p-4 hover:bg-gray-50 transition-colors cursor-pointer" onclick={() => goto(`/groups/${groupId}/posts/${post.id}`)}>
             <div class="flex items-center justify-between mb-1.5">
               <div class="flex items-center gap-2">
-                {#if post.users?.avatar_url}
-                  <img src={post.users.avatar_url} alt={post.users.display_name} class="w-6 h-6 rounded-full object-cover shrink-0" />
-                {:else}
-                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0" style="background: hsl(234 26% 41%)">
-                    {initials(post.users?.display_name)}
-                  </div>
-                {/if}
                 <span class="text-sm font-medium text-foreground">{post.users?.display_name}</span>
               </div>
               <span class="text-xs text-muted-foreground">{timeAgo(post.created_at)}</span>

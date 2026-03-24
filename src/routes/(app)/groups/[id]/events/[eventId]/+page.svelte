@@ -39,6 +39,13 @@
     currentUserRole = membership?.role ?? null
 
     await loadEvent()
+
+    // Redirect non-admins away from drafts
+    if (event?.status === 'draft' && currentUserRole !== 'admin' && currentUserRole !== 'co_admin') {
+      goto(`/groups/${groupId}/events`)
+      return
+    }
+
     loading = false
   })
 
@@ -67,15 +74,15 @@
 
     if (event?.status === 'pending_date') {
       const { data: opts } = await supabase
-        .from('event_date_options')
-        .select('*, event_date_responses(user_id, available)')
+        .from('event_datetime_options')
+        .select('*, event_datetime_votes(user_id)')
         .eq('event_id', eventId)
-        .order('candidate_date', { ascending: true })
+        .order('candidate_datetime', { ascending: true })
       dateOptions = opts ?? []
 
       const myResponses = new Set()
       dateOptions.forEach(opt => {
-        if (opt.event_date_responses?.find(r => r.user_id === currentUserId && r.available)) {
+        if (opt.event_datetime_votes?.find(r => r.user_id === currentUserId)) {
           myResponses.add(opt.id)
         }
       })
@@ -98,18 +105,14 @@
 
   async function toggleDateResponse(optionId) {
     const currently = myDateResponses.has(optionId)
-    const existing = dateOptions
-      .find(o => o.id === optionId)
-      ?.event_date_responses
-      ?.find(r => r.user_id === currentUserId)
 
-    if (existing) {
-      await supabase.from('event_date_responses')
-        .update({ available: !currently })
+    if (currently) {
+      await supabase.from('event_datetime_votes')
+        .delete()
         .eq('option_id', optionId).eq('user_id', currentUserId)
     } else {
-      await supabase.from('event_date_responses')
-        .insert({ option_id: optionId, user_id: currentUserId, available: true })
+      await supabase.from('event_datetime_votes')
+        .insert({ option_id: optionId, user_id: currentUserId })
     }
     await loadEvent()
   }
@@ -149,9 +152,36 @@
     const option = dateOptions.find(o => o.id === optionId)
     if (!option) return
     await supabase.from('events').update({
-      event_date: option.candidate_date,
+      event_date: option.candidate_datetime,
       status: 'confirmed'
     }).eq('id', eventId)
+    await loadEvent()
+  }
+
+  async function publishDraft() {
+    const status = event.datetime_mode === 'poll_host' || event.datetime_mode === 'poll_open'
+      ? 'pending_date' : 'confirmed'
+    await supabase.from('events').update({ status }).eq('id', eventId)
+
+    // Notify group members
+    const { data: groupMembers } = await supabase
+      .from('group_members')
+      .select('user_id')
+      .eq('group_id', groupId)
+
+    const others = (groupMembers ?? []).filter(m => m.user_id !== currentUserId)
+    if (others.length) {
+      await supabase.from('notifications').insert(
+        others.map(m => ({
+          user_id: m.user_id,
+          type: 'new_event',
+          body: `New event: ${event.title}`,
+          link: `/groups/${groupId}/events/${eventId}`,
+          is_read: false,
+        }))
+      )
+    }
+
     await loadEvent()
   }
 
@@ -178,7 +208,7 @@
   {#if loading}
     <div class="flex flex-col gap-3">
       {#each [1,2,3] as _}
-        <div class="rounded-xl border border-border p-4 animate-pulse">
+        <div class="rounded-xl bg-white p-4 animate-pulse">
           <div class="h-4 bg-muted rounded w-1/2 mb-2"></div>
           <div class="h-3 bg-muted rounded w-1/3"></div>
         </div>
@@ -187,55 +217,90 @@
 
   {:else if event}
 
-    <!-- Event header -->
-    <div class="mb-6">
-      <div class="flex items-start justify-between">
-        <h2 class="text-xl font-semibold text-foreground">{event.title}</h2>
-        {#if isAdmin}
-          <a href="/groups/{groupId}/events/{eventId}/edit"
-            class="p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
-            style="color: hsl(234 12% 52%)">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
+    <!-- Draft banner -->
+    {#if event.status === 'draft' && isAdmin}
+      <div class="rounded-xl border-2 border-dashed p-4 mb-4 flex items-center justify-between" style="border-color: hsl(35 80% 60%); background: hsl(35 100% 97%)">
+        <div>
+          <p class="text-sm font-semibold" style="color: hsl(35 80% 40%)">This event is a draft</p>
+          <p class="text-xs" style="color: hsl(35 60% 40%)">Only admins can see it. Publish to notify members.</p>
+        </div>
+        <div class="flex gap-2 shrink-0">
+          <a href="/groups/{groupId}/events/new?draft={eventId}"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
+            style="border-color: hsl(234 20% 88%); color: hsl(234 26% 41%)">
+            Edit
           </a>
+          <button onclick={publishDraft}
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
+            style="background: hsl(234 26% 41%)">
+            Publish
+          </button>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Back link -->
+    <a href="/groups/{groupId}/events" class="flex items-center gap-1 text-xs mb-5 transition-colors" style="color: hsl(234 12% 52%)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      All events
+    </a>
+
+    <!-- Event header -->
+    <div class="flex items-start gap-4 mb-4">
+      {#if event.cover_photo_url}
+        <img src={event.cover_photo_url} alt={event.title} class="w-14 h-14 rounded-full object-cover shrink-0" />
+      {/if}
+      <div class="flex-1 min-w-0">
+        <div class="flex items-start justify-between gap-2">
+          <h2 class="text-xl font-bold text-foreground leading-tight">{event.title}</h2>
+          {#if isAdmin}
+            <a href="/groups/{groupId}/events/{eventId}/edit"
+              class="p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
+              style="color: hsl(234 12% 52%)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </a>
+          {/if}
+        </div>
+
+        {#if event.status === 'pending_date'}
+          <span class="inline-block mt-1 text-xs px-2 py-0.5 rounded-full font-medium" style="background: hsl(35 100% 97%); color: hsl(35 80% 40%)">
+            Picking a date
+          </span>
+        {:else}
+          <p class="text-sm text-muted-foreground mt-1">{formatDate(event.event_date)} at {formatTime(event.event_date)}</p>
+        {/if}
+
+        {#if event.location}
+          <p class="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+            </svg>
+            {event.location}
+          </p>
+        {/if}
+
+        {#if host}
+          <p class="text-xs text-muted-foreground mt-1">Hosted by {host.display_name}</p>
         {/if}
       </div>
-
-      {#if event.status === 'pending_date'}
-        <span class="inline-block mt-1 text-xs px-2 py-0.5 rounded-full font-medium" style="background: hsl(35 100% 97%); color: hsl(35 80% 40%)">
-          Picking a date
-        </span>
-      {:else}
-        <p class="text-sm text-muted-foreground mt-1">{formatDate(event.event_date)} at {formatTime(event.event_date)}</p>
-      {/if}
-
-      {#if event.location}
-        <p class="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-          </svg>
-          {event.location}
-        </p>
-      {/if}
-
-      {#if host}
-        <p class="text-xs text-muted-foreground mt-1">Hosted by {host.display_name}</p>
-      {/if}
-
-      {#if event.description}
-        <p class="text-sm text-foreground mt-3">{event.description}</p>
-      {/if}
     </div>
+
+    {#if event.description}
+      <div class="rounded-xl bg-white p-4 mb-4">
+        <p class="text-sm text-foreground">{event.description}</p>
+      </div>
+    {/if}
 
     <!-- Date picker (pending_date) -->
     {#if event.status === 'pending_date'}
-      <div class="rounded-xl border border-border p-4 mb-4">
+      <div class="rounded-xl bg-white p-4 mb-4">
         <h3 class="text-sm font-semibold text-foreground mb-3">Which dates work for you?</h3>
         <div class="flex flex-col gap-2">
           {#each dateOptions as option}
-            {@const responseCount = option.event_date_responses?.filter(r => r.available).length ?? 0}
+            {@const voteCount = option.event_datetime_votes?.length ?? 0}
             {@const myResponse = myDateResponses.has(option.id)}
             <div class="flex items-center gap-3">
               <button
@@ -245,8 +310,8 @@
                   ? 'border-color: hsl(234 26% 41%); background: hsl(234 40% 97%); color: hsl(234 26% 41%)'
                   : 'border-color: hsl(234 20% 88%); color: hsl(234 20% 40%)'}
               >
-                <span class="font-medium">{formatShortDate(option.candidate_date)}</span>
-                <span class="text-xs">{responseCount} available</span>
+                <span class="font-medium">{formatShortDate(option.candidate_datetime)}</span>
+                <span class="text-xs">{voteCount} available</span>
               </button>
               {#if isAdmin}
                 <button
@@ -264,10 +329,15 @@
 
     {:else}
       <!-- RSVP -->
-      <div class="rounded-xl border border-border p-4 mb-4">
+      <div class="rounded-xl bg-white p-4 mb-4">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-foreground">Are you going?</h3>
-          <p class="text-xs text-muted-foreground">{goingCount} going · {notGoingCount} not going</p>
+          <p class="text-xs text-muted-foreground">
+            {goingCount} going · {notGoingCount} not going
+            {#if event.capacity}
+              · {goingCount} of {event.capacity} spots filled
+            {/if}
+          </p>
         </div>
         <div class="flex gap-2">
           <button
@@ -308,7 +378,8 @@
     {/if}
 
     <!-- Bring list -->
-    <div class="rounded-xl border border-border p-4">
+    {#if event.bring_list_mode !== 'none'}
+    <div class="rounded-xl bg-white p-4">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-sm font-semibold text-foreground">Bring list</h3>
         <p class="text-xs text-muted-foreground">{claimedCount}/{totalSlots} claimed</p>
@@ -399,6 +470,7 @@
         </button>
       {/if}
     </div>
+    {/if}
 
   {/if}
 </div>
