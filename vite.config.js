@@ -6,6 +6,8 @@ import path from 'path';
 export default defineConfig({
   plugins: [tailwindcss(), sveltekit()],
   server: {
+    port: process.env.PORT ? parseInt(process.env.PORT) : 5173,
+    strictPort: !!process.env.PORT,
     fs: {
       allow: [
         path.resolve('..', '..', '..'),

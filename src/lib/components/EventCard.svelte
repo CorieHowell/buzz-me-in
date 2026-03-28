@@ -10,14 +10,14 @@
     if (past) return 'hsl(220 9% 82%)'
     if (rsvp === 'yes') return 'hsl(35 100% 62%)'
     if (rsvp === 'maybe') return 'hsl(252 40% 68%)'
-    if (rsvp === 'no') return 'hsl(0 68% 70%)'
+    if (rsvp === 'no') return 'hsl(355 68% 73%)'
     return 'hsl(220 9% 82%)'
   }
 
   function rsvpSelectStyle(rsvp) {
     if (rsvp === 'yes') return 'background: hsl(35 100% 94%); color: hsl(35 80% 30%)'
     if (rsvp === 'maybe') return 'background: hsl(252 40% 93%); color: hsl(252 35% 40%)'
-    if (rsvp === 'no') return 'background: hsl(0 68% 93%); color: hsl(0 68% 40%)'
+    if (rsvp === 'no') return 'background: hsl(355 68% 93%); color: hsl(355 68% 38%)'
     return 'background: hsl(220 14% 93%); color: hsl(220 9% 50%)'
   }
 
@@ -37,18 +37,21 @@
   function handleRsvpChange(e) {
     onRsvp(event.id, e.target.value)
   }
+
+  let eventDay = $derived(new Date(event.event_date).getDate())
+  let eventMonth = $derived(new Date(event.event_date).toLocaleDateString('en-US', { month: 'short' }))
 </script>
 
 <div
   id="cal-event-{event.id}"
-  class="rounded-xl bg-white flex gap-3 overflow-hidden"
+  class="rounded-xl bg-white flex overflow-hidden"
   style={isPast ? 'opacity: 0.6' : ''}
 >
   <!-- RSVP stripe -->
   <div class="w-1 rounded-full self-stretch shrink-0 my-3 ml-3" style="background: {stripeColor(event.myRsvp, isPast)}"></div>
 
   <!-- Content -->
-  <div class="flex-1 min-w-0 py-3 flex flex-col gap-1.5">
+  <div class="flex-1 min-w-0 py-3 pl-3 flex flex-col gap-1.5">
 
     <!-- Group label (calendar context only) -->
     {#if context === 'calendar' && event.groups?.name}
@@ -77,7 +80,7 @@
     </div>
 
     <!-- RSVP row -->
-    <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+    <div class="flex items-center gap-2 mt-auto flex-wrap">
       {#if isPast}
         <span style="font-size: 11px; color: hsl(220 9% 55%)">{goingRsvps.length} attended</span>
       {:else}
@@ -137,13 +140,16 @@
 
   </div>
 
-  <!-- Right photo -->
-  {#if event.cover_photo_url}
-    <div class="w-24 shrink-0 self-stretch overflow-hidden rounded-r-xl">
+  <!-- Right: image or placeholder — padded to match stripe margins -->
+  <div class="w-36 shrink-0 self-stretch overflow-hidden rounded-xl my-3 mr-3">
+    {#if event.cover_photo_url}
       <img src={event.cover_photo_url} alt={event.title} class="w-full h-full object-cover" />
-    </div>
-  {:else}
-    <div class="pr-3"></div>
-  {/if}
+    {:else}
+      <div class="w-full h-full flex flex-col items-center justify-center gap-1 select-none" style="background: hsl(234 20% 96%)">
+        <span class="font-black leading-none" style="font-size: 2.5rem; color: hsl(234 20% 78%)">{eventDay}</span>
+        <span class="font-bold uppercase tracking-widest" style="font-size: 10px; color: hsl(234 20% 72%)">{eventMonth}</span>
+      </div>
+    {/if}
+  </div>
 
 </div>

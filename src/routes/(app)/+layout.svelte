@@ -123,8 +123,14 @@
   </div>
 
   <!-- Content area -->
-  <main class="flex-1 overflow-y-auto pb-20 md:pb-0 min-w-0">
-    <slot />
+  <main class="flex-1 flex flex-col overflow-hidden min-w-0">
+    {#if $page.url.pathname === '/calendar'}
+      <slot />
+    {:else}
+      <div class="flex-1 overflow-y-auto pb-20 md:pb-0">
+        <slot />
+      </div>
+    {/if}
   </main>
 
   <!-- Mobile bottom tab bar -->
