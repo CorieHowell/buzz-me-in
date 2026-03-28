@@ -74,7 +74,7 @@
   }
 
   let tabs = $derived([
-    { key: 'board',   label: 'Board',   href: `/groups/${groupId}/board`,   count: 0 },
+    { key: 'board',   label: 'Message Board',   href: `/groups/${groupId}/board`,   count: 0 },
     { key: 'events',  label: 'Events',  href: `/groups/${groupId}/events`,  count: 0 },
     { key: 'members', label: 'Members', href: `/groups/${groupId}/members`, count: 0 },
     { key: 'lists',   label: 'Lists',   href: `/groups/${groupId}/lists`,   count: 0 },
@@ -105,17 +105,16 @@
       </div>
 
       <!-- Nav items -->
-      <nav class="relative z-10 flex flex-col gap-0.5 py-2 flex-1">
+      <nav class="relative z-10 flex flex-col gap-1 pt-4 pb-2 flex-1">
         {#each tabs as tab}
           {@const active = isTabActive(tab.key)}
           <a
             href={tab.href}
-            class="flex items-center gap-2.5 mx-5 px-2 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-white/10"
-            style={active
-              ? 'background: rgba(255,255,255,0.22); color: white'
-              : 'color: rgba(255,255,255,0.70)'}
+            class="group flex items-center gap-2.5 mx-5 pr-2 py-2 rounded-xl text-sm transition-all"
+            style={active ? 'color: white' : 'color: rgba(255,255,255,0.65)'}
           >
-            {tab.label}
+            <span class="w-1 rounded-full self-stretch shrink-0 my-0.5 transition-all {active ? 'bg-white' : 'bg-transparent group-hover:bg-white/30'}"></span>
+            <span class="{active ? 'font-semibold' : 'font-medium'} transition-all">{tab.label}</span>
             {#if tab.count > 0}
               <span class="ml-auto text-xs font-semibold rounded-full px-1.5 py-0.5 leading-none"
                 style="background: rgba(255,255,255,0.18); color: white; min-width: 1.25rem; text-align: center">
@@ -144,40 +143,6 @@
           </a>
         {/if}
 
-        <!-- More / overflow -->
-        <div class="relative">
-          <button
-            onclick={() => overflowOpen = !overflowOpen}
-            class="flex items-center gap-2.5 w-full mx-5 px-2 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-white/10"
-            style="color: rgba(255,255,255,0.70)"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-              <circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>
-            </svg>
-            More
-          </button>
-          {#if overflowOpen}
-            <button class="fixed inset-0 z-40 cursor-default" onclick={() => overflowOpen = false} tabindex="-1" aria-hidden="true"></button>
-            <div class="absolute left-0 bottom-full mb-1 w-44 bg-white rounded-xl border border-border py-1 z-50"
-              style="box-shadow: 0 4px 16px rgba(0,0,0,0.13)">
-              <a href="/groups/{groupId}/invite" onclick={() => overflowOpen = false}
-                class="flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                </svg>
-                Invite link
-              </a>
-              <a href="/groups/{groupId}/suggest" onclick={() => overflowOpen = false}
-                class="flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                </svg>
-                Anonymous suggestion
-              </a>
-            </div>
-          {/if}
-        </div>
       </div>
     </aside>
 

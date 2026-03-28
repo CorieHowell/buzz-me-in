@@ -120,20 +120,23 @@
   }
 </script>
 
-<div class="max-w-2xl mx-auto px-4 py-6">
+<div class="flex flex-col">
 
-  <div class="flex items-center justify-between mb-6">
-    <h2 class="text-base font-semibold text-foreground">Lists</h2>
+  <!-- Section header -->
+  <header class="shrink-0 flex items-center justify-between px-6 py-5 bg-background border-b border-border sticky top-0 z-10">
+    <h1 class="text-xl font-bold tracking-tight" style="color: hsl(267.7 52.54% 9%)">Lists</h1>
     {#if isAdmin}
       <button
-        onclick={() => showNewList = !showNewList}
-        class="px-4 py-2 rounded-xl text-sm font-semibold text-white"
+        onclick={() => showNewList = true}
+        class="px-4 py-2 rounded-full text-sm font-semibold text-white"
         style="background: hsl(234 26% 41%)"
       >
-        + New list
+        Create New
       </button>
     {/if}
-  </div>
+  </header>
+
+  <div class="max-w-2xl mx-auto px-4 py-6 w-full">
 
   {#if showNewList}
     <div class="rounded-xl bg-white p-4 mb-4">
@@ -308,4 +311,5 @@
     </div>
   {/if}
 
+  </div>
 </div>

@@ -125,20 +125,23 @@
   }
 </script>
 
-<div class="max-w-2xl mx-auto px-4 py-6">
+<div class="flex flex-col">
 
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-base font-semibold text-foreground">Events</h2>
+  <!-- Section header -->
+  <header class="shrink-0 flex items-center justify-between px-6 py-5 bg-background border-b border-border sticky top-0 z-10">
+    <h1 class="text-xl font-bold tracking-tight" style="color: hsl(267.7 52.54% 9%)">Group Events</h1>
     {#if isAdmin}
       <a
         href="/groups/{groupId}/events/new"
-        class="px-4 py-2 rounded-xl text-sm font-semibold text-white"
+        class="px-4 py-2 rounded-full text-sm font-semibold text-white"
         style="background: hsl(234 26% 41%)"
       >
-        + New event
+        New Event
       </a>
     {/if}
-  </div>
+  </header>
+
+  <div class="max-w-2xl mx-auto px-4 py-6 w-full">
 
   <!-- Pill filters -->
   <div class="flex gap-2 mb-6">
@@ -262,4 +265,5 @@
     {/if}
 
   {/if}
+  </div>
 </div>

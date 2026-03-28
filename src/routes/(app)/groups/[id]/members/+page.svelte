@@ -109,7 +109,21 @@
   let isAdmin = $derived(currentUserRole === 'admin' || currentUserRole === 'co_admin')
 </script>
 
-<div class="max-w-2xl mx-auto px-4 py-6">
+<div class="flex flex-col">
+
+  <!-- Section header -->
+  <header class="shrink-0 flex items-center justify-between px-6 py-5 bg-background border-b border-border sticky top-0 z-10">
+    <h1 class="text-xl font-bold tracking-tight" style="color: hsl(267.7 52.54% 9%)">Members</h1>
+    <a
+      href="/groups/{groupId}/invite"
+      class="px-4 py-2 rounded-full text-sm font-semibold text-white"
+      style="background: hsl(234 26% 41%)"
+    >
+      Invite
+    </a>
+  </header>
+
+  <div class="max-w-2xl mx-auto px-4 py-6 w-full">
 
   {#if loading}
     <div class="flex flex-col gap-3">
@@ -308,4 +322,5 @@
     </div>
 
   {/if}
+  </div>
 </div>

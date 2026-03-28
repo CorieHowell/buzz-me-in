@@ -50,14 +50,6 @@
       iconHoverHtml: processIcon(GroupsIconHoverSvg),
     },
     {
-      href: '/messages',
-      label: 'Messages',
-      prefix: '/messages',
-      iconHtml: processIcon(MessagesIconSvg),
-      iconHoverHtml: processIcon(MessagesIconHoverSvg),
-      badge: 'messages',
-    },
-    {
       href: '/calendar',
       label: 'Calendar',
       prefix: '/calendar',
@@ -70,6 +62,14 @@
       prefix: '/notifications',
       iconHtml: processIcon(unreadNotifications > 0 ? NotificationsActiveIconSvg : NotificationIconSvg),
       iconHoverHtml: processIcon(unreadNotifications > 0 ? NotificationsActiveIconHoverSvg : NotificationsIconHoverSvg),
+    },
+    {
+      href: '/messages',
+      label: 'Messages',
+      prefix: '/messages',
+      iconHtml: processIcon(MessagesIconSvg),
+      iconHoverHtml: processIcon(MessagesIconHoverSvg),
+      badge: 'messages',
     },
   ])
 </script>
