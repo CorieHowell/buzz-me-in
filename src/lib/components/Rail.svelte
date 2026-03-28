@@ -13,6 +13,10 @@
   let profileDropdownOpen = $state(false)
 
   function isActive(prefix) {
+    if (prefix === '/groups') {
+      // Only active on the groups list/new — not inside a specific group
+      return currentPath === '/groups' || currentPath.startsWith('/groups/new')
+    }
     return currentPath.startsWith(prefix)
   }
 
@@ -51,26 +55,35 @@
   ]
 </script>
 
-<aside class="flex flex-col h-screen w-[52px] shrink-0 overflow-hidden" style="background: var(--color-header)">
+<aside class="relative flex flex-col h-screen w-[76px] shrink-0 overflow-hidden" style="background: hsl(267.7 52.54% 9%)">
+
+  <!-- Decorative blobs (matching marketing hero) -->
+  <div class="absolute top-0 right-0 w-40 h-40 rounded-full pointer-events-none"
+    style="background: var(--color-accent); opacity: 0.10; filter: blur(60px); transform: translate(40%, -30%);"></div>
+  <div class="absolute bottom-0 left-0 w-32 h-32 rounded-full pointer-events-none"
+    style="background: var(--color-accent-soft); opacity: 0.10; filter: blur(50px);"></div>
 
   <!-- Logo -->
-  <a href="/home" class="flex items-center justify-center h-14 shrink-0" title="Home">
-    <span class="font-black text-sm leading-none" style="color: hsl(35 100% 72%)">b</span><span class="font-black text-sm leading-none" style="color: hsl(234 65% 82%)">m</span><span class="font-black text-sm leading-none" style="color: hsl(235 45% 78%)">i</span>
+  <a href="/home" class="relative z-10 flex items-center justify-center h-14 shrink-0" title="Home">
+    <div class="flex flex-col items-center font-black">
+      <span style="font-size: 13px; line-height: 1; color: hsl(234 65% 82%); letter-spacing: -0.01em">buzz</span>
+      <span style="font-size: 12px; line-height: 1; letter-spacing: -0.01em; margin-top: -4px"><span style="color: hsl(35 100% 72%)">me</span><span style="color: hsl(234 65% 82%)">in</span></span>
+    </div>
   </a>
 
   <!-- Primary nav icons -->
-  <nav class="flex flex-col items-center gap-1 px-2 pb-2">
+  <nav class="relative z-10 flex flex-col items-center gap-1 pb-2">
     {#each navItems as item}
       {@const active = isActive(item.prefix)}
       {@const hasBadge = (item.badge === 'messages' && unreadMessages > 0) || (item.badge === 'notifications' && unreadNotifications > 0)}
       <a
         href={item.href}
         title={item.label}
-        class="relative flex items-center justify-center w-9 h-9 rounded-[10px] transition-colors"
-        style={active ? 'background: rgba(255,255,255,0.15); color: white' : 'color: rgba(255,255,255,0.65)'}
+        class="relative flex items-center justify-center w-9 h-9 rounded-xl transition-colors hover:bg-white/10"
+        style={active ? 'background: rgba(255,255,255,0.22); color: white' : 'color: rgba(255,255,255,0.70)'}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width={active ? '2' : '1.8'} stroke-linecap="round" stroke-linejoin="round">
+          stroke-width={active ? '2.2' : '1.8'} stroke-linecap="round" stroke-linejoin="round">
           {@html item.icon}
         </svg>
         {#if hasBadge}
@@ -79,23 +92,10 @@
       </a>
     {/each}
 
-    <!-- Search (separated slightly) -->
-    <div class="w-6 h-px mt-1 mb-1 rounded-full" style="background: rgba(255,255,255,0.12)"></div>
-    <a
-      href="/search"
-      title="Search"
-      class="relative flex items-center justify-center w-9 h-9 rounded-[10px] transition-colors"
-      style={isActive('/search') ? 'background: rgba(255,255,255,0.15); color: white' : 'color: rgba(255,255,255,0.65)'}
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
-    </a>
   </nav>
 
   <!-- Group avatar shortcuts (scrollable) -->
-  <div class="flex-1 overflow-y-auto flex flex-col items-center gap-1.5 px-2 py-2 no-scrollbar">
+  <div class="relative z-10 flex-1 overflow-y-auto flex flex-col items-center gap-4 px-2 py-2 no-scrollbar">
     {#if myGroups.length > 0}
       <div class="w-6 h-px rounded-full mb-0.5" style="background: rgba(255,255,255,0.12)"></div>
     {/if}
@@ -105,19 +105,19 @@
       <a
         href="/groups/{group.id}/board"
         title={group.name}
-        class="shrink-0"
+        class="shrink-0 transition-all"
       >
         {#if group.avatar_url}
           <img
             src={group.avatar_url}
             alt={group.name}
-            class="w-8 h-8 rounded-full object-cover"
-            style="{isGroupActive ? 'box-shadow: 0 0 0 2px rgba(255,255,255,0.7)' : ''}{isAdmin && !isGroupActive ? '; outline: 2px solid hsl(35 100% 62%); outline-offset: 1px' : ''}{isAdmin && isGroupActive ? '; outline: 2px solid hsl(35 100% 62%); outline-offset: 1px' : ''}"
+            class="w-8 h-8 object-cover transition-all {isGroupActive ? 'rounded-full' : 'rounded-lg'}"
+            style="{isGroupActive ? 'box-shadow: 0 0 0 2px rgba(255,255,255,0.7), 0 0 14px 6px hsla(252, 60%, 82%, 0.28)' : ''}{isAdmin ? '; outline: 2px solid hsl(35 100% 62%); outline-offset: 1px' : ''}"
           />
         {:else}
           <div
-            class="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0"
-            style="background: rgba(255,255,255,0.15); font-size: 10px; font-weight: 700; {isGroupActive ? 'box-shadow: 0 0 0 2px rgba(255,255,255,0.7)' : ''}{isAdmin ? '; outline: 2px solid hsl(35 100% 62%); outline-offset: 1px' : ''}"
+            class="w-8 h-8 flex items-center justify-center text-white shrink-0 transition-all {isGroupActive ? 'rounded-full' : 'rounded-lg'}"
+            style="background: rgba(255,255,255,0.15); font-size: 10px; font-weight: 700; {isGroupActive ? 'box-shadow: 0 0 0 2px rgba(255,255,255,0.7), 0 0 14px 6px hsla(252, 60%, 82%, 0.28)' : ''}{isAdmin ? '; outline: 2px solid hsl(35 100% 62%); outline-offset: 1px' : ''}"
           >
             {initials(group.name)}
           </div>
@@ -127,11 +127,11 @@
   </div>
 
   <!-- User avatar + profile dropdown (bottom) -->
-  <div class="flex items-center justify-center pb-4 relative">
+  <div class="relative z-10 flex items-center justify-center pb-4">
     <button
       onclick={() => profileDropdownOpen = !profileDropdownOpen}
       title="Profile"
-      class="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center shrink-0 transition-opacity hover:opacity-85"
+      class="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center shrink-0 transition-opacity hover:opacity-85"
       style="background: rgba(255,255,255,0.2)"
     >
       {#if userAvatarUrl}

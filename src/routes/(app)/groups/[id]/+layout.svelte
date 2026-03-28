@@ -87,60 +87,29 @@
   <div class="hidden md:flex h-full">
 
     <!-- Secondary nav (176px) -->
-    <aside class="w-44 shrink-0 border-r border-border flex flex-col overflow-y-auto bg-background">
+    <aside class="relative w-60 shrink-0 border-r flex flex-col overflow-hidden" style="background: var(--color-header); border-color: rgba(255,255,255,0.12)">
+
+      <!-- Decorative blobs (matching marketing hero) -->
+      <div class="absolute top-0 right-0 w-48 h-48 rounded-full pointer-events-none"
+        style="background: var(--color-accent); opacity: 0.10; filter: blur(70px); transform: translate(40%, -30%);"></div>
+      <div class="absolute bottom-0 left-0 w-40 h-40 rounded-full pointer-events-none"
+        style="background: var(--color-accent-soft); opacity: 0.10; filter: blur(60px);"></div>
 
       <!-- Group identity block -->
-      <div class="px-4 pt-5 pb-4 border-b border-border">
-        <!-- Avatar with color picker for admins -->
-        <div class="relative w-10 h-10 mb-3">
-          {#if group.avatar_url}
-            <img src={group.avatar_url} alt={group.name} class="w-10 h-10 rounded-full object-cover" />
-          {:else}
-            <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold"
-              style="background: {avatarBg()}">
-              {initials(group.name)}
-            </div>
-            {#if currentUserRole === 'admin' || currentUserRole === 'co_admin'}
-              <button
-                onclick={() => avatarColorOpen = !avatarColorOpen}
-                class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white flex items-center justify-center"
-                style="background: {avatarBg()}"
-                title="Change color"
-              >
-                <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-              {#if avatarColorOpen}
-                <button class="fixed inset-0 z-40 cursor-default" onclick={() => avatarColorOpen = false} tabindex="-1" aria-hidden="true"></button>
-                <div class="absolute left-0 top-full mt-2 z-50 bg-white rounded-xl border border-border p-2.5 flex gap-2"
-                  style="box-shadow: 0 4px 16px rgba(0,0,0,0.12)">
-                  {#each AVATAR_COLORS as opt}
-                    <button
-                      onclick={() => { avatarColor = opt.key; avatarColorOpen = false }}
-                      class="w-7 h-7 rounded-full transition-transform hover:scale-110 shrink-0"
-                      style="background: {opt.bg}; {avatarColor === opt.key ? `box-shadow: 0 0 0 2px white, 0 0 0 4px ${opt.bg}` : ''}"
-                      title={opt.label}
-                    ></button>
-                  {/each}
-                </div>
-              {/if}
-            {/if}
-          {/if}
-        </div>
-        <p class="text-sm font-semibold text-foreground leading-snug truncate">{group.name}</p>
+      <div class="relative z-10 px-5 pt-5 pb-4 border-b" style="border-color: rgba(255,255,255,0.12)">
+        <p class="text-base font-extrabold leading-snug truncate" style="color: white">{group.name}</p>
       </div>
 
       <!-- Nav items -->
-      <nav class="flex flex-col gap-0.5 p-2 flex-1">
+      <nav class="relative z-10 flex flex-col gap-0.5 p-2 flex-1">
         {#each tabs as tab}
           {@const active = isTabActive(tab.key)}
           <a
             href={tab.href}
-            class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+            class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-white/10"
             style={active
-              ? 'background: hsl(234 40% 97%); color: hsl(234 26% 41%)'
-              : 'color: hsl(234 12% 52%)'}
+              ? 'background: rgba(255,255,255,0.22); color: white'
+              : 'color: rgba(255,255,255,0.70)'}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width={active ? '2' : '1.8'} stroke-linecap="round" stroke-linejoin="round">
@@ -152,14 +121,14 @@
       </nav>
 
       <!-- Footer: Settings + More overflow -->
-      <div class="border-t border-border p-2 flex flex-col gap-0.5">
+      <div class="relative z-10 border-t p-2 flex flex-col gap-0.5" style="border-color: rgba(255,255,255,0.12)">
         {#if currentUserRole === 'admin' || currentUserRole === 'co_admin'}
           <a
             href="/groups/{groupId}/settings"
-            class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+            class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-white/10"
             style={currentPath.startsWith(`/groups/${groupId}/settings`)
-              ? 'background: hsl(234 40% 97%); color: hsl(234 26% 41%)'
-              : 'color: hsl(234 12% 52%)'}
+              ? 'background: rgba(255,255,255,0.22); color: white'
+              : 'color: rgba(255,255,255,0.70)'}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3"/>
@@ -173,8 +142,8 @@
         <div class="relative">
           <button
             onclick={() => overflowOpen = !overflowOpen}
-            class="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-            style="color: hsl(234 12% 52%)"
+            class="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-white/10"
+            style="color: rgba(255,255,255,0.70)"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none">
               <circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>
