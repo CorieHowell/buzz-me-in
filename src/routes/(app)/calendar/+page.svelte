@@ -1,12 +1,23 @@
 <script>
   import { supabase } from '$lib/supabase'
-  import { onMount } from 'svelte'
+  import { onMount, getContext } from 'svelte'
   import { goto } from '$app/navigation'
+  import EventCard from '$lib/components/EventCard.svelte'
+
+  const appContext = getContext('appContext')
+  const { openCalSync } = appContext
+  let myGroups = $derived(appContext.myGroups)
+
+  let selectedGroupId = $state(null)
+  let filteredEvents = $derived(
+    selectedGroupId === null
+      ? upcomingEvents
+      : upcomingEvents.filter(e => e.group_id === selectedGroupId)
+  )
 
   let loading = $state(true)
   let upcomingEvents = $state([])
   let userIsAdmin = $state(false)
-  let rsvpDropdownId = $state(null)
   let calendarYear = $state(new Date().getFullYear())
   let calendarMonth = $state(new Date().getMonth())
 
@@ -44,13 +55,29 @@
       .order('event_date', { ascending: true })
       .limit(20)
 
-    upcomingEvents = events ?? []
+    if ((events ?? []).length > 0) {
+      const eventIds = events.map(e => e.id)
+      const { data: myRsvps } = await supabase
+        .from('event_rsvps')
+        .select('event_id, rsvp')
+        .eq('user_id', user.id)
+        .in('event_id', eventIds)
+      const rsvpMap = Object.fromEntries((myRsvps ?? []).map(r => [r.event_id, r.rsvp]))
+      upcomingEvents = events.map(e => ({ ...e, myRsvp: rsvpMap[e.id] ?? null, rsvps: [] }))
+    } else {
+      upcomingEvents = []
+    }
     loading = false
   })
 
-  function setRsvp(eventId, value) {
-    upcomingEvents = upcomingEvents.map(e => e.id === eventId ? { ...e, myRsvp: value } : e)
-    rsvpDropdownId = null
+  async function setRsvp(eventId, value) {
+    upcomingEvents = upcomingEvents.map(e => e.id === eventId ? { ...e, myRsvp: value || null } : e)
+    if (value) {
+      await supabase.from('event_rsvps').upsert({ event_id: eventId, user_id: (await supabase.auth.getUser()).data.user.id, rsvp: value }, { onConflict: 'event_id,user_id' })
+    } else {
+      const uid = (await supabase.auth.getUser()).data.user.id
+      await supabase.from('event_rsvps').delete().eq('event_id', eventId).eq('user_id', uid)
+    }
   }
 
   function scrollToDay(day) {
@@ -81,7 +108,7 @@
     upcomingEvents.forEach(e => {
       const d = new Date(e.event_date)
       if (d.getFullYear() === calendarYear && d.getMonth() === calendarMonth) {
-        eventsByDay.set(d.getDate(), e.myRsvp)
+        eventsByDay.set(d.getDate(), [...(eventsByDay.get(d.getDate()) ?? []), e.myRsvp])
       }
     })
 
@@ -95,115 +122,159 @@
       cells.push({
         day: d,
         hasEvent: eventsByDay.has(d),
-        rsvpState: eventsByDay.get(d) ?? null,
+        rsvpStates: eventsByDay.get(d) ?? [],
         isToday: d === todayDate,
       })
     }
     return cells
   })
 
-  function rsvpDotColor(rsvpState) {
-    if (rsvpState === 'yes') return 'hsl(35 100% 55%)'
-    if (rsvpState === 'maybe') return 'hsl(355 68% 62%)'
-    return 'hsl(220 9% 65%)'
-  }
-
-  function formatEventDateTime(dateStr) {
+  function separatorLabel(dateStr) {
     const d = new Date(dateStr)
-    const date = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-    const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-    return `${date} @ ${time}`
+    const today = new Date()
+    const tomorrow = new Date(today)
+    tomorrow.setDate(today.getDate() + 1)
+    const isSameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+    if (isSameDay(d, today)) return `Today, ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+    if (isSameDay(d, tomorrow)) return `Tomorrow, ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
   }
 
-  function initials(name) {
-    if (!name) return '?'
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  function rsvpDotColor(rsvpState) {
+    if (rsvpState === 'yes') return 'hsl(35 100% 62%)'
+    if (rsvpState === 'maybe') return 'hsl(252 40% 68%)'
+    if (rsvpState === 'no') return 'hsl(0 68% 70%)'
+    return 'hsl(220 9% 75%)'
   }
+
+
 </script>
 
-<div class="px-6 py-6 md:px-10 md:py-8 bg-background min-h-full">
+<div class="flex flex-col h-full bg-background">
 
-  <h1 class="text-xl font-semibold text-foreground mb-6">Calendar</h1>
+  <!-- Page header -->
+  <header class="shrink-0 flex items-center justify-between px-6 py-5 bg-background border-b border-border">
+    <h1 class="text-3xl font-black tracking-tight" style="color: hsl(267.7 52.54% 9%)">Calendar</h1>
+    <button
+      onclick={openCalSync}
+      class="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-foreground hover:bg-muted transition-colors"
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+      </svg>
+      Sync with calendar app
+    </button>
+  </header>
 
-  {#if loading}
-    <div class="flex flex-col gap-3">
-      {#each [1,2,3] as _}
-        <div class="rounded-xl p-4 animate-pulse bg-white border border-border">
-          <div class="h-3 bg-muted rounded w-1/3 mb-3"></div>
-          <div class="h-4 bg-muted rounded w-2/3"></div>
+  <!-- Two-column body -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- Left: mini calendar (sticky) -->
+    <div class="w-96 shrink-0 bg-white border-r border-border flex flex-col">
+      {#if !loading}
+        <!-- Scrollable calendar area -->
+        <div class="flex-1 overflow-y-auto px-6 py-6">
+          <!-- Month nav -->
+          <div class="flex items-center justify-between mb-2">
+            <button onclick={prevMonth} class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+            </button>
+            <span class="text-sm font-semibold text-foreground">{MONTHS[calendarMonth]} {calendarYear}</span>
+            <button onclick={nextMonth} class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Day headers -->
+          <div class="grid grid-cols-7 mb-1">
+            {#each DAYS as d}
+              <div class="text-center font-semibold uppercase tracking-wider py-1" style="font-size: 9px; color: hsl(234 12% 72%)">{d}</div>
+            {/each}
+          </div>
+
+          <!-- Calendar cells -->
+          <div class="grid grid-cols-7 gap-y-1">
+            {#each calendarCells as cell}
+              {#if cell === null}
+                <div class="h-10"></div>
+              {:else}
+                <div
+                  class="relative flex items-center justify-center h-10 select-none {cell.hasEvent ? 'cursor-pointer' : 'cursor-default'}"
+                  onclick={() => cell.hasEvent && scrollToDay(cell.day)}
+                >
+                  <div class="flex items-center justify-center w-7 h-7 rounded-full transition-colors {cell.hasEvent && !cell.isToday ? 'hover:bg-purple-50' : ''}"
+                    style="font-size: 13px; {cell.isToday
+                      ? 'background: hsl(267.7 52.54% 9%); color: white; font-weight: 700'
+                      : cell.hasEvent
+                        ? 'font-weight: 600; color: hsl(267.7 52.54% 9%)'
+                        : 'color: hsl(234 12% 45%)'}"
+                  >{cell.day}</div>
+                  {#if cell.rsvpStates.length > 0 && !cell.isToday}
+                    <div class="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                      {#each cell.rsvpStates.slice(0, 3) as rsvp}
+                        <span class="w-1 h-1 rounded-full" style="background: {rsvpDotColor(rsvp)}"></span>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+            {/each}
+          </div>
         </div>
-      {/each}
-    </div>
 
-  {:else}
-    <div class="flex flex-col md:flex-row gap-8 md:items-start">
-
-      <!-- Calendar grid (left / top) -->
-      <div class="md:w-72 shrink-0">
-        <!-- Month nav -->
-        <div class="flex items-center justify-between mb-2">
-          <button onclick={prevMonth} class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-          </button>
-          <span class="text-sm font-semibold text-foreground">{MONTHS[calendarMonth]} {calendarYear}</span>
-          <button onclick={nextMonth} class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Day headers -->
-        <div class="grid grid-cols-7 mb-1">
-          {#each DAYS as d}
-            <div class="text-center font-semibold uppercase tracking-wider py-1" style="font-size: 9px; color: hsl(234 12% 72%)">{d}</div>
-          {/each}
-        </div>
-
-        <!-- Calendar cells -->
-        <div class="grid grid-cols-7">
-          {#each calendarCells as cell}
-            {#if cell === null}
-              <div class="h-8"></div>
-            {:else}
-              <div
-                class="relative flex items-center justify-center h-8 select-none {cell.hasEvent ? 'cursor-pointer' : 'cursor-default'}"
-                onclick={() => cell.hasEvent && scrollToDay(cell.day)}
-              >
-                <div class="flex items-center justify-center w-6 h-6 rounded-full transition-colors {cell.hasEvent && !cell.isToday ? 'hover:bg-amber-100' : ''}"
-                  style="font-size: 12px; {cell.isToday
-                    ? 'background: hsl(234 26% 41%); color: white; font-weight: 700'
-                    : cell.hasEvent
-                      ? 'font-weight: 600; color: hsl(234 26% 41%)'
-                      : 'color: hsl(234 12% 45%)'}"
-                >{cell.day}</div>
-                {#if cell.hasEvent && !cell.isToday}
-                  <span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
-                    style="background: {rsvpDotColor(cell.rsvpState)}"></span>
-                {/if}
-              </div>
-            {/if}
-          {/each}
-        </div>
-
-        <!-- RSVP legend -->
-        <div class="flex items-center gap-4 mt-4 px-1">
+        <!-- RSVP legend — anchored to bottom -->
+        <div class="shrink-0 px-6 py-4 flex flex-col gap-2">
           {#each [{ color: rsvpDotColor('yes'), label: 'Going' }, { color: rsvpDotColor('maybe'), label: 'Maybe' }, { color: rsvpDotColor(null), label: 'No RSVP' }] as item}
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-2">
               <div class="w-2 h-2 rounded-full shrink-0" style="background: {item.color}"></div>
               <span class="text-xs text-muted-foreground">{item.label}</span>
             </div>
           {/each}
         </div>
+      {/if}
+    </div>
+
+    <!-- Right: event cards (scrollable) -->
+    <div class="flex-1 flex flex-col overflow-hidden" style="background: hsl(220 14% 95%)">
+
+      <!-- Sticky group filter pills -->
+      <div class="shrink-0 flex items-center gap-2 px-6 py-3 overflow-x-auto no-scrollbar border-b" style="background: hsl(220 14% 95%); border-color: rgba(0,0,0,0.06)">
+        <button
+          onclick={() => selectedGroupId = null}
+          class="shrink-0 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
+          style={selectedGroupId === null
+            ? 'background: hsl(267.7 52.54% 9%); color: white'
+            : 'background: white; color: hsl(234 20% 30%)'}
+        >All</button>
+        {#each myGroups as group}
+          <button
+            onclick={() => selectedGroupId = group.id}
+            class="shrink-0 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
+            style={selectedGroupId === group.id
+              ? 'background: hsl(267.7 52.54% 9%); color: white'
+              : 'background: white; color: hsl(234 20% 30%)'}
+          >{group.name}</button>
+        {/each}
       </div>
 
-      <!-- Events list (right / below) -->
-      <div class="flex-1 flex flex-col gap-3">
-        {#if upcomingEvents.length === 0}
+      <!-- Scrollable cards -->
+      <div class="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-3">
+
+        {#if loading}
+          {#each [1,2,3] as _}
+            <div class="rounded-xl p-4 animate-pulse bg-white">
+              <div class="h-3 bg-muted rounded w-1/3 mb-3"></div>
+              <div class="h-4 bg-muted rounded w-2/3"></div>
+            </div>
+          {/each}
+
+        {:else if filteredEvents.length === 0}
           <div class="py-12 flex flex-col items-center text-center">
-            <div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-3">
+            <div class="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-3">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="hsl(234 12% 72%)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
                 <line x1="16" y1="2" x2="16" y2="6"/>
@@ -214,141 +285,28 @@
             <p class="text-sm font-semibold text-foreground mb-1">No upcoming events</p>
             <p class="text-xs text-muted-foreground mb-4 max-w-[220px]">You don't have any confirmed events in the next 90 days.</p>
             {#if userIsAdmin}
-              <a href="/groups" class="px-4 py-2 rounded-lg text-xs font-semibold text-white" style="background: hsl(234 26% 41%)">
-                Create an Event
-              </a>
+              <a href="/groups" class="px-4 py-2 rounded-lg text-xs font-semibold text-white" style="background: hsl(267.7 52.54% 9%)">Create an Event</a>
             {:else}
-              <a href="/groups/new" class="px-4 py-2 rounded-lg text-xs font-semibold text-white" style="background: hsl(234 26% 41%)">
-                Create a Group to Start
-              </a>
+              <a href="/groups/new" class="px-4 py-2 rounded-lg text-xs font-semibold text-white" style="background: hsl(267.7 52.54% 9%)">Create a Group to Start</a>
             {/if}
           </div>
 
         {:else}
-          {#each upcomingEvents as event}
-            {@const visibleRsvps = (event.rsvps ?? []).slice(0, 5)}
-            {@const extraRsvps = Math.max(0, (event.rsvps ?? []).length - 5)}
-            <div id="cal-event-{event.id}" class="bg-white rounded-xl border border-border/60">
-              <div class="p-4">
-
-                <!-- Title/date + circle avatar -->
-                <div class="flex items-center gap-3 mb-2.5">
-                  <div class="flex-1 min-w-0">
-                    <a href="/groups/{event.group_id}/events/{event.id}"
-                      class="text-sm font-semibold text-foreground hover:underline leading-snug block truncate">
-                      {event.title}
-                    </a>
-                    <p class="text-xs text-muted-foreground mt-0.5">{formatEventDateTime(event.event_date)}</p>
-                  </div>
-                  <div class="w-11 h-11 rounded-full shrink-0 overflow-hidden" style="background: hsl(220 14% 93%)">
-                    {#if event.cover_photo_url}
-                      <img src={event.cover_photo_url} alt={event.title} class="w-full h-full object-cover" />
-                    {:else}
-                      <div class="w-full h-full flex flex-col items-center justify-center gap-0 select-none">
-                        <span class="font-semibold uppercase tracking-widest leading-none" style="font-size: 8px; color: hsl(220 9% 65%)">{new Date(event.event_date).toLocaleDateString('en-US', { month: 'short' })}</span>
-                        <span class="font-bold leading-none mt-0.5" style="font-size: 1.25rem; color: hsl(220 9% 50%)">{new Date(event.event_date).getDate()}</span>
-                      </div>
-                    {/if}
-                  </div>
-                </div>
-
-                <!-- Meta: group + location -->
-                <div class="flex flex-col gap-1.5 mb-3">
-                  <div class="flex items-center gap-1.5">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(234 12% 80%)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
-                    <span class="text-xs text-muted-foreground">{event.groups?.name}</span>
-                  </div>
-                  {#if event.location}
-                    <div class="flex items-center gap-1.5">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(234 12% 80%)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                        <circle cx="12" cy="10" r="3"/>
-                      </svg>
-                      <span class="text-xs text-muted-foreground truncate">{event.location}</span>
-                    </div>
-                  {/if}
-                </div>
-
-                <!-- Bottom row: RSVP | avatars -->
-                <div class="flex items-center gap-2.5">
-                  <div class="relative shrink-0">
-                    <button
-                      onclick={() => rsvpDropdownId = rsvpDropdownId === event.id ? null : event.id}
-                      class="flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap w-20"
-                      style={event.myRsvp === 'yes'
-                        ? 'background: hsl(35 100% 93%); color: hsl(35 80% 32%)'
-                        : event.myRsvp === 'maybe'
-                          ? 'background: hsl(355 68% 93%); color: hsl(355 68% 38%)'
-                          : 'background: hsl(220 14% 93%); color: hsl(220 9% 46%)'}
-                    >
-                      {#if event.myRsvp === 'yes'}
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                        Going
-                      {:else if event.myRsvp === 'maybe'}
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-                        Maybe
-                      {:else}
-                        RSVP
-                      {/if}
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-
-                    {#if rsvpDropdownId === event.id}
-                      <button class="fixed inset-0 z-40 cursor-default" onclick={() => rsvpDropdownId = null} tabindex="-1" aria-hidden="true"></button>
-                      <div class="absolute left-0 bottom-full mb-1 w-32 bg-white rounded-lg border border-border py-1 z-50"
-                        style="box-shadow: 0 4px 16px rgba(0,0,0,0.12)">
-                        <button onclick={() => setRsvp(event.id, 'yes')} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-gray-50 transition-colors" style={event.myRsvp === 'yes' ? 'color: hsl(35 80% 32%); font-weight: 600' : 'color: hsl(234 20% 30%)'}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                          Going
-                        </button>
-                        <button onclick={() => setRsvp(event.id, 'maybe')} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-gray-50 transition-colors" style={event.myRsvp === 'maybe' ? 'color: hsl(355 68% 38%); font-weight: 600' : 'color: hsl(234 20% 30%)'}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-                          Maybe
-                        </button>
-                        <button onclick={() => setRsvp(event.id, 'no')} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-gray-50 transition-colors" style={event.myRsvp === 'no' ? 'color: hsl(0 72% 51%); font-weight: 600' : 'color: hsl(234 20% 30%)'}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                          Can't go
-                        </button>
-                      </div>
-                    {/if}
-                  </div>
-
-                  {#if visibleRsvps.length > 0}
-                    <div class="w-px h-4 shrink-0" style="background: hsl(220 14% 88%)"></div>
-                    <div class="flex items-center">
-                      {#each visibleRsvps as person, i}
-                        <div
-                          class="w-6 h-6 rounded-full flex items-center justify-center text-white border-2 border-white shrink-0 overflow-hidden"
-                          style="background: hsl(234 26% 41%); font-size: 8px; font-weight: 700; margin-left: {i > 0 ? '-6px' : '0'}; z-index: {10 - i}; position: relative;"
-                          title={person.name}
-                        >
-                          {#if person.avatar_url}
-                            <img src={person.avatar_url} alt={person.name} class="w-full h-full object-cover" />
-                          {:else}
-                            {initials(person.name)}
-                          {/if}
-                        </div>
-                      {/each}
-                      {#if extraRsvps > 0}
-                        <div
-                          class="w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shrink-0"
-                          style="background: hsl(220 14% 88%); color: hsl(234 12% 40%); font-size: 8px; font-weight: 700; margin-left: -6px; position: relative; z-index: 5"
-                        >+{extraRsvps}</div>
-                      {/if}
-                    </div>
-                  {/if}
-                </div>
-
+          {#each filteredEvents as event, i}
+            {@const prevDate = i > 0 ? new Date(filteredEvents[i - 1].event_date).toDateString() : null}
+            {@const thisDate = new Date(event.event_date).toDateString()}
+            {#if thisDate !== prevDate}
+              <div class="flex items-center gap-3 {i > 0 ? 'mt-2' : ''}">
+                <span class="shrink-0 font-semibold" style="font-size: 11px; color: hsl(220 9% 55%)">{separatorLabel(event.event_date)}</span>
+                <div class="flex-1 h-px" style="background: hsl(220 14% 88%)"></div>
               </div>
-            </div>
+            {/if}
+            <EventCard {event} context="calendar" onRsvp={setRsvp} />
           {/each}
         {/if}
+
       </div>
-
     </div>
-  {/if}
 
+  </div>
 </div>

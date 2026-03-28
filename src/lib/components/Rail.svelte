@@ -1,4 +1,5 @@
 <script>
+  // icons
   import GroupsIconSvg from '$lib/icons/GroupsIcon.svg?raw'
   import GroupsIconHoverSvg from '$lib/icons/GroupsIcon-Hover.svg?raw'
   import MessagesIconSvg from '$lib/icons/MessagesIcon.svg?raw'
@@ -99,8 +100,8 @@
         class="group relative flex items-center justify-center w-9 h-9 rounded-xl transition-colors hover:bg-white/10"
         style={active ? 'background: rgba(255,255,255,0.22)' : ''}
       >
-        <span class="group-hover:hidden">{@html item.iconHtml}</span>
-        <span class="hidden group-hover:flex">{@html item.iconHoverHtml}</span>
+        <span class={active ? 'hidden' : 'group-hover:hidden'}>{@html item.iconHtml}</span>
+        <span class={active ? 'flex' : 'hidden group-hover:flex'}>{@html item.iconHoverHtml}</span>
         {#if item.badge === 'messages' && unreadMessages > 0}
           <span class="absolute top-1 right-1 w-2 h-2 rounded-full" style="background: hsl(35 100% 62%); box-shadow: 0 0 0 1.5px hsl(267.7 52.54% 9%)"></span>
         {/if}

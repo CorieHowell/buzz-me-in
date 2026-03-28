@@ -101,6 +101,7 @@
     get unreadMessages() { return unreadMessages },
     get unreadNotifications() { return unreadNotifications },
     get userAvatarUrl() { return userAvatarUrl },
+    openCalSync: () => { calSyncOpen = true },
   })
 </script>
 
