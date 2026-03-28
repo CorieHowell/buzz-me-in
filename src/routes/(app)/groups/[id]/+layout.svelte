@@ -7,6 +7,7 @@
   let groupId = $derived($page.params.id)
   let group = $state(null)
   let currentUserRole = $state(null)
+  let memberCount = $state(null)
   let loading = $state(true)
   let userId = $state(null)
 
@@ -28,6 +29,12 @@
         .single()
 
       group = groupData
+
+      const { count } = await supabase
+        .from('group_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('group_id', groupId)
+      memberCount = count
 
       const { data: membership } = await supabase
         .from('group_members')
@@ -67,18 +74,12 @@
   }
 
   let tabs = $derived([
-    { key: 'board',   label: 'Board',   href: `/groups/${groupId}/board` },
-    { key: 'events',  label: 'Events',  href: `/groups/${groupId}/events` },
-    { key: 'members', label: 'Members', href: `/groups/${groupId}/members` },
-    { key: 'lists',   label: 'Lists',   href: `/groups/${groupId}/lists` },
+    { key: 'board',   label: 'Board',   href: `/groups/${groupId}/board`,   count: 0 },
+    { key: 'events',  label: 'Events',  href: `/groups/${groupId}/events`,  count: 0 },
+    { key: 'members', label: 'Members', href: `/groups/${groupId}/members`, count: 0 },
+    { key: 'lists',   label: 'Lists',   href: `/groups/${groupId}/lists`,   count: 0 },
   ])
 
-  const tabIcons = {
-    board:   `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>`,
-    events:  `<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>`,
-    members: `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`,
-    lists:   `<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>`,
-  }
 </script>
 
 {#if !loading && group}
@@ -98,34 +99,39 @@
       <!-- Group identity block -->
       <div class="relative z-10 px-5 pt-5 pb-4 border-b" style="border-color: rgba(255,255,255,0.12)">
         <p class="text-base font-extrabold leading-snug truncate" style="color: white">{group.name}</p>
+        {#if memberCount !== null}
+          <p class="text-xs mt-0.5" style="color: rgba(255,255,255,0.45)">{memberCount} {memberCount === 1 ? 'member' : 'members'}</p>
+        {/if}
       </div>
 
       <!-- Nav items -->
-      <nav class="relative z-10 flex flex-col gap-0.5 p-2 flex-1">
+      <nav class="relative z-10 flex flex-col gap-0.5 py-2 flex-1">
         {#each tabs as tab}
           {@const active = isTabActive(tab.key)}
           <a
             href={tab.href}
-            class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-white/10"
+            class="flex items-center gap-2.5 mx-5 px-2 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-white/10"
             style={active
               ? 'background: rgba(255,255,255,0.22); color: white'
               : 'color: rgba(255,255,255,0.70)'}
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width={active ? '2' : '1.8'} stroke-linecap="round" stroke-linejoin="round">
-              {@html tabIcons[tab.key]}
-            </svg>
             {tab.label}
+            {#if tab.count > 0}
+              <span class="ml-auto text-xs font-semibold rounded-full px-1.5 py-0.5 leading-none"
+                style="background: rgba(255,255,255,0.18); color: white; min-width: 1.25rem; text-align: center">
+                {tab.count}
+              </span>
+            {/if}
           </a>
         {/each}
       </nav>
 
       <!-- Footer: Settings + More overflow -->
-      <div class="relative z-10 border-t p-2 flex flex-col gap-0.5" style="border-color: rgba(255,255,255,0.12)">
+      <div class="relative z-10 border-t py-2 flex flex-col gap-0.5" style="border-color: rgba(255,255,255,0.12)">
         {#if currentUserRole === 'admin' || currentUserRole === 'co_admin'}
           <a
             href="/groups/{groupId}/settings"
-            class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-white/10"
+            class="flex items-center gap-2.5 mx-5 px-2 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-white/10"
             style={currentPath.startsWith(`/groups/${groupId}/settings`)
               ? 'background: rgba(255,255,255,0.22); color: white'
               : 'color: rgba(255,255,255,0.70)'}
@@ -142,7 +148,7 @@
         <div class="relative">
           <button
             onclick={() => overflowOpen = !overflowOpen}
-            class="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-white/10"
+            class="flex items-center gap-2.5 w-full mx-5 px-2 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-white/10"
             style="color: rgba(255,255,255,0.70)"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none">

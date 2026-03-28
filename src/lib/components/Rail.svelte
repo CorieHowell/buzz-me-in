@@ -1,4 +1,19 @@
 <script>
+  import GroupsIconSvg from '$lib/icons/GroupsIcon.svg?raw'
+  import GroupsIconHoverSvg from '$lib/icons/GroupsIcon-Hover.svg?raw'
+  import MessagesIconSvg from '$lib/icons/MessagesIcon.svg?raw'
+  import MessagesIconHoverSvg from '$lib/icons/MessagesIcon-Hover.svg?raw'
+  import CalendarIconSvg from '$lib/icons/CalendarIcon.svg?raw'
+  import CalendarIconHoverSvg from '$lib/icons/CalendarIcon-Hover.svg?raw'
+  import NotificationIconSvg from '$lib/icons/NotificationIcon.svg?raw'
+  import NotificationsIconHoverSvg from '$lib/icons/NotificationsIcon-Hover.svg?raw'
+  import NotificationsActiveIconSvg from '$lib/icons/NotificationsActiveIcon.svg?raw'
+  import NotificationsActiveIconHoverSvg from '$lib/icons/NotificationsActiveIcon-Hover.svg?raw'
+
+  function processIcon(raw, size = 20) {
+    return raw.replace('<svg ', `<svg width="${size}" height="${size}" `)
+  }
+
   let {
     myGroups = [],
     user = null,
@@ -25,34 +40,37 @@
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
 
-  const navItems = [
+  let navItems = $derived([
     {
       href: '/groups',
       label: 'Groups',
       prefix: '/groups',
-      icon: `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`,
+      iconHtml: processIcon(GroupsIconSvg),
+      iconHoverHtml: processIcon(GroupsIconHoverSvg),
     },
     {
       href: '/messages',
       label: 'Messages',
       prefix: '/messages',
-      icon: `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>`,
+      iconHtml: processIcon(MessagesIconSvg),
+      iconHoverHtml: processIcon(MessagesIconHoverSvg),
       badge: 'messages',
     },
     {
       href: '/calendar',
       label: 'Calendar',
       prefix: '/calendar',
-      icon: `<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>`,
+      iconHtml: processIcon(CalendarIconSvg),
+      iconHoverHtml: processIcon(CalendarIconHoverSvg),
     },
     {
       href: '/notifications',
       label: 'Alerts',
       prefix: '/notifications',
-      icon: `<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>`,
-      badge: 'notifications',
+      iconHtml: processIcon(unreadNotifications > 0 ? NotificationsActiveIconSvg : NotificationIconSvg),
+      iconHoverHtml: processIcon(unreadNotifications > 0 ? NotificationsActiveIconHoverSvg : NotificationsIconHoverSvg),
     },
-  ]
+  ])
 </script>
 
 <aside class="relative flex flex-col h-screen w-[76px] shrink-0 overflow-hidden" style="background: hsl(267.7 52.54% 9%)">
@@ -75,19 +93,16 @@
   <nav class="relative z-10 flex flex-col items-center gap-1 pb-2">
     {#each navItems as item}
       {@const active = isActive(item.prefix)}
-      {@const hasBadge = (item.badge === 'messages' && unreadMessages > 0) || (item.badge === 'notifications' && unreadNotifications > 0)}
       <a
         href={item.href}
         title={item.label}
-        class="relative flex items-center justify-center w-9 h-9 rounded-xl transition-colors hover:bg-white/10"
-        style={active ? 'background: rgba(255,255,255,0.22); color: white' : 'color: rgba(255,255,255,0.70)'}
+        class="group relative flex items-center justify-center w-9 h-9 rounded-xl transition-colors hover:bg-white/10"
+        style={active ? 'background: rgba(255,255,255,0.22)' : ''}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width={active ? '2.2' : '1.8'} stroke-linecap="round" stroke-linejoin="round">
-          {@html item.icon}
-        </svg>
-        {#if hasBadge}
-          <span class="absolute top-1 right-1 w-2 h-2 rounded-full" style="background: hsl(35 100% 62%); box-shadow: 0 0 0 1.5px var(--color-header)"></span>
+        <span class="group-hover:hidden">{@html item.iconHtml}</span>
+        <span class="hidden group-hover:flex">{@html item.iconHoverHtml}</span>
+        {#if item.badge === 'messages' && unreadMessages > 0}
+          <span class="absolute top-1 right-1 w-2 h-2 rounded-full" style="background: hsl(35 100% 62%); box-shadow: 0 0 0 1.5px hsl(267.7 52.54% 9%)"></span>
         {/if}
       </a>
     {/each}
@@ -112,12 +127,12 @@
             src={group.avatar_url}
             alt={group.name}
             class="w-8 h-8 object-cover transition-all {isGroupActive ? 'rounded-full' : 'rounded-lg'}"
-            style="{isGroupActive ? 'box-shadow: 0 0 0 2px rgba(255,255,255,0.7), 0 0 14px 6px hsla(252, 60%, 82%, 0.28)' : ''}{isAdmin ? '; outline: 2px solid hsl(35 100% 62%); outline-offset: 1px' : ''}"
+            style="{isGroupActive ? 'box-shadow: 0 0 0 2px rgba(255,255,255,0.7), 0 0 14px 6px hsla(252, 60%, 82%, 0.28)' : ''}{isAdmin ? '; outline: 1.5px solid hsl(35 100% 62%); outline-offset: 1px' : ''}"
           />
         {:else}
           <div
             class="w-8 h-8 flex items-center justify-center text-white shrink-0 transition-all {isGroupActive ? 'rounded-full' : 'rounded-lg'}"
-            style="background: rgba(255,255,255,0.15); font-size: 10px; font-weight: 700; {isGroupActive ? 'box-shadow: 0 0 0 2px rgba(255,255,255,0.7), 0 0 14px 6px hsla(252, 60%, 82%, 0.28)' : ''}{isAdmin ? '; outline: 2px solid hsl(35 100% 62%); outline-offset: 1px' : ''}"
+            style="background: rgba(255,255,255,0.15); font-size: 10px; font-weight: 700; {isGroupActive ? 'box-shadow: 0 0 0 2px rgba(255,255,255,0.7), 0 0 14px 6px hsla(252, 60%, 82%, 0.28)' : ''}{isAdmin ? '; outline: 1.5px solid hsl(35 100% 62%); outline-offset: 1px' : ''}"
           >
             {initials(group.name)}
           </div>
