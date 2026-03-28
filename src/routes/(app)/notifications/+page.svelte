@@ -1,11 +1,25 @@
 <script>
   import { supabase } from '$lib/supabase'
   import { goto } from '$app/navigation'
+  import { page } from '$app/stores'
   import { onMount } from 'svelte'
 
   let notifications = $state([])
   let loading = $state(true)
   let currentUserId = $state(null)
+
+  let currentType = $derived($page.url.searchParams.get('type') ?? 'all')
+
+  let filteredNotifications = $derived.by(() => {
+    if (currentType === 'all') return notifications
+    return notifications.filter(n => {
+      if (currentType === 'mentions') return n.type === 'reply' || n.type === 'mention'
+      if (currentType === 'replies') return n.type === 'reply'
+      if (currentType === 'events') return ['event_reminder', 'new_event', 'event_cancelled', 'event_rescheduled', 'host_assigned'].includes(n.type)
+      if (currentType === 'polls') return n.type === 'date_vote'
+      return true
+    })
+  })
 
   onMount(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -80,7 +94,7 @@
       {/each}
     </div>
 
-  {:else if notifications.length === 0}
+  {:else if filteredNotifications.length === 0}
     <div class="text-center py-16">
       <div class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style="background: hsl(234 40% 97%)">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="hsl(234 26% 41%)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -94,7 +108,7 @@
 
   {:else}
     <div class="flex flex-col gap-2">
-      {#each notifications as notif}
+      {#each filteredNotifications as notif}
         <button
           onclick={() => notif.link && goto(notif.link)}
           class="flex items-start gap-3 p-4 rounded-xl border text-left w-full transition-colors hover:bg-muted/30"

@@ -3,6 +3,7 @@
   import { page } from '$app/stores'
   import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
+  import EventCard from '$lib/components/EventCard.svelte'
 
   let groupId = $derived($page.params.id)
   let upcomingEvents = $state([])
@@ -11,12 +12,14 @@
   let loading = $state(true)
   let currentUserRole = $state(null)
   let activeFilter = $state('upcoming')
+  let userId = $state(null)
 
   let isAdmin = $derived(currentUserRole === 'admin' || currentUserRole === 'co_admin')
 
   onMount(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { goto('/auth/login'); return }
+    userId = user.id
 
     const { data: membership } = await supabase
       .from('group_members')
@@ -57,11 +60,30 @@
         .order('created_at', { ascending: false }),
     ])
 
-    upcomingEvents = upcomingRes.data ?? []
-    pastEvents = pastRes.data ?? []
+    if (upcomingRes.data?.length > 0) {
+      const ids = upcomingRes.data.map(e => e.id)
+      const { data: myRsvps } = await supabase
+        .from('event_rsvps').select('event_id, rsvp')
+        .eq('user_id', user.id).in('event_id', ids)
+      const rsvpMap = Object.fromEntries((myRsvps ?? []).map(r => [r.event_id, r.rsvp]))
+      upcomingEvents = upcomingRes.data.map(e => ({ ...e, myRsvp: rsvpMap[e.id] ?? null, rsvps: [] }))
+    } else {
+      upcomingEvents = []
+    }
+    pastEvents = pastRes.data?.map(e => ({ ...e, myRsvp: null, rsvps: [] })) ?? []
     drafts = draftsRes.data ?? []
     loading = false
   })
+
+  async function setRsvp(eventId, value) {
+    upcomingEvents = upcomingEvents.map(e => e.id === eventId ? { ...e, myRsvp: value || null } : e)
+    if (value) {
+      await supabase.from('event_rsvps').upsert({ event_id: eventId, user_id: (await supabase.auth.getUser()).data.user.id, rsvp: value }, { onConflict: 'event_id,user_id' })
+    } else {
+      const uid = (await supabase.auth.getUser()).data.user.id
+      await supabase.from('event_rsvps').delete().eq('event_id', eventId).eq('user_id', uid)
+    }
+  }
 
   function formatDate(dateStr) {
     return new Date(dateStr).toLocaleDateString('en-US', {
@@ -163,55 +185,7 @@
     {:else}
       <div class="flex flex-col gap-3">
         {#each upcomingEvents as event}
-          <button
-            onclick={() => goto(`/groups/${groupId}/events/${event.id}`)}
-            class="flex items-center gap-4 rounded-xl bg-white p-4 text-left hover:bg-gray-50 transition-colors w-full"
-          >
-            <!-- Circle: photo or date/TBD -->
-            <div class="w-12 h-12 rounded-full shrink-0 overflow-hidden flex items-center justify-center" style="background: hsl(234 40% 97%)">
-              {#if event.cover_photo_url}
-                <img src={event.cover_photo_url} alt={event.title} class="w-full h-full object-cover" />
-              {:else if event.event_date && event.status !== 'pending_date'}
-                <div class="flex flex-col items-center justify-center w-full h-full">
-                  <span class="text-[10px] font-medium leading-none" style="color: hsl(234 26% 41%)">{new Date(event.event_date).toLocaleDateString('en-US', { month: 'short' })}</span>
-                  <span class="text-base font-bold leading-none mt-0.5" style="color: hsl(234 26% 41%)">{new Date(event.event_date).getDate()}</span>
-                </div>
-              {:else}
-                <span class="text-[10px] font-medium" style="color: hsl(234 26% 41%)">TBD</span>
-              {/if}
-            </div>
-
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 mb-1">
-                <p class="text-base font-bold text-foreground truncate">{event.title}</p>
-                {#if event.status === 'pending_date'}
-                  <span class="text-xs px-2 py-0.5 rounded-full shrink-0" style="background: hsl(35 100% 97%); color: hsl(35 80% 40%)">Date TBD</span>
-                {/if}
-              </div>
-              {#if event.event_date && event.status !== 'pending_date'}
-                <p class="text-xs text-muted-foreground flex items-center gap-1">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                  {formatDate(event.event_date)} · {formatTime(event.event_date)}
-                </p>
-              {/if}
-              {#if event.location}
-                <p class="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                  {event.location}
-                </p>
-              {/if}
-              {#if event.users?.display_name}
-                <p class="text-xs text-muted-foreground flex items-center gap-1">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                  {event.users.display_name}
-                </p>
-              {/if}
-            </div>
-
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(234 12% 52%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
-          </button>
+          <EventCard {event} context="group" onRsvp={setRsvp} />
         {/each}
       </div>
     {/if}
@@ -225,28 +199,7 @@
     {:else}
       <div class="flex flex-col gap-2">
         {#each pastEvents as event}
-          <button
-            onclick={() => goto(`/groups/${groupId}/events/${event.id}`)}
-            class="flex items-center gap-4 rounded-xl bg-white p-4 text-left hover:bg-gray-50 transition-colors w-full opacity-60"
-          >
-            <div class="flex flex-col items-center justify-center w-12 h-12 rounded-lg bg-muted shrink-0">
-              {#if event.event_date}
-                <span class="text-xs font-medium text-muted-foreground">{new Date(event.event_date).toLocaleDateString('en-US', { month: 'short' })}</span>
-                <span class="text-lg font-bold leading-none text-muted-foreground">{new Date(event.event_date).getDate()}</span>
-              {:else}
-                <span class="text-xs font-medium text-muted-foreground">—</span>
-              {/if}
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold text-foreground truncate">{event.title}</p>
-              {#if event.event_date}
-                <p class="text-xs text-muted-foreground">{formatDate(event.event_date)}</p>
-              {/if}
-            </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(234 12% 52%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
-          </button>
+          <EventCard {event} context="group" onRsvp={() => {}} />
         {/each}
       </div>
     {/if}
