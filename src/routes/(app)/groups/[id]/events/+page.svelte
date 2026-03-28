@@ -63,9 +63,9 @@
     if (upcomingRes.data?.length > 0) {
       const ids = upcomingRes.data.map(e => e.id)
       const { data: myRsvps } = await supabase
-        .from('event_rsvps').select('event_id, rsvp')
+        .from('event_rsvps').select('event_id, status')
         .eq('user_id', user.id).in('event_id', ids)
-      const rsvpMap = Object.fromEntries((myRsvps ?? []).map(r => [r.event_id, r.rsvp]))
+      const rsvpMap = Object.fromEntries((myRsvps ?? []).map(r => [r.event_id, dbToCode(r.status)]))
       upcomingEvents = upcomingRes.data.map(e => ({ ...e, myRsvp: rsvpMap[e.id] ?? null, rsvps: [] }))
     } else {
       upcomingEvents = []
@@ -75,12 +75,24 @@
     loading = false
   })
 
+  function dbToCode(status) {
+    if (status === 'going') return 'yes'
+    if (status === 'not_going') return 'no'
+    return status
+  }
+
+  function codeToDb(code) {
+    if (code === 'yes') return 'going'
+    if (code === 'no') return 'not_going'
+    return code
+  }
+
   async function setRsvp(eventId, value) {
     upcomingEvents = upcomingEvents.map(e => e.id === eventId ? { ...e, myRsvp: value || null } : e)
+    const uid = (await supabase.auth.getUser()).data.user.id
     if (value) {
-      await supabase.from('event_rsvps').upsert({ event_id: eventId, user_id: (await supabase.auth.getUser()).data.user.id, rsvp: value }, { onConflict: 'event_id,user_id' })
+      await supabase.from('event_rsvps').upsert({ event_id: eventId, user_id: uid, status: codeToDb(value) }, { onConflict: 'event_id,user_id' })
     } else {
-      const uid = (await supabase.auth.getUser()).data.user.id
       await supabase.from('event_rsvps').delete().eq('event_id', eventId).eq('user_id', uid)
     }
   }
