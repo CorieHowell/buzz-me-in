@@ -30,6 +30,7 @@
   onMount(async () => {
     const mq = window.matchMedia('(max-width: 767px)')
     isMobile = mq.matches
+    calendarCollapsed = mq.matches
     mq.addEventListener('change', e => { isMobile = e.matches })
 
     const { data: { user } } = await supabase.auth.getUser()
