@@ -18,6 +18,22 @@
   let replyingTo = $state(null)
   let submittingReply = $state(false)
   let emojiPickerPostId = $state(null)
+  let searchQuery = $state('')
+  let textareaEl = $state(null)
+
+  let filteredPosts = $derived(
+    searchQuery.trim() === ''
+      ? posts
+      : posts.filter(p =>
+          p.body?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.users?.display_name?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+  )
+
+  function focusComposer() {
+    textareaEl?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    textareaEl?.focus()
+  }
 
   const EMOJI_OPTIONS = ['❤️', '👍', '😂', '😮', '🙌', '🔥']
 
@@ -203,12 +219,40 @@
   let isAdmin = $derived(currentUserRole === 'admin' || currentUserRole === 'co_admin')
 </script>
 
-<div class="max-w-2xl mx-auto px-4 py-6">
+<div class="flex flex-col">
+
+  <!-- Section header -->
+  <header class="shrink-0 flex items-center justify-between px-6 py-5 bg-background border-b border-border sticky top-0 z-10">
+    <h1 class="text-xl font-bold tracking-tight" style="color: hsl(267.7 52.54% 9%)">Message Board</h1>
+    <div class="flex items-center gap-2">
+      <div class="relative">
+        <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(234 12% 52%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input
+          type="search"
+          bind:value={searchQuery}
+          placeholder="Search posts…"
+          class="pl-8 pr-3 py-1.5 rounded-full text-sm border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring w-40"
+        />
+      </div>
+      <button
+        onclick={focusComposer}
+        class="px-4 py-2 rounded-full text-sm font-semibold text-white shrink-0"
+        style="background: hsl(234 26% 41%)"
+      >
+        New post
+      </button>
+    </div>
+  </header>
+
+  <div class="max-w-2xl mx-auto px-4 py-6 w-full">
 
   <!-- New post composer -->
   <div class="rounded-xl bg-white p-4 mb-6">
     <textarea
       bind:value={newPostBody}
+      bind:this={textareaEl}
       placeholder="Write something to the group…"
       rows="3"
       class="w-full text-sm text-foreground bg-white placeholder:text-muted-foreground resize-none focus:outline-none"
@@ -246,7 +290,7 @@
 
   {:else}
     <div class="flex flex-col gap-3">
-      {#each posts as post}
+      {#each filteredPosts as post}
         {@const visibleReplies = (post.replies ?? []).filter(r => !r.is_deleted)}
         {@const isExpanded = expandedPosts.has(post.id)}
         {@const isOwner = post.author_id === currentUserId}
@@ -447,4 +491,5 @@
     </div>
   {/if}
 
+  </div>
 </div>
