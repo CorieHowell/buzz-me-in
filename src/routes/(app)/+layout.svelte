@@ -127,7 +127,7 @@
     {#if $page.url.pathname === '/calendar'}
       <slot />
     {:else}
-      <div class="flex-1 overflow-y-auto pb-20 md:pb-0">
+      <div class="flex-1 overflow-y-auto pb-16 md:pb-0">
         <slot />
       </div>
     {/if}
